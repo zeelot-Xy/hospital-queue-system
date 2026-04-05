@@ -12,7 +12,11 @@ const getAllDepartments = async (req, res) => {
 const createDepartment = async (req, res) => {
   try {
     const { name, description } = req.body;
-    const department = await Department.create({ name, description });
+    const department = await Department.create({
+      name,
+      description,
+      status: "active",
+    });
     res.status(201).json(department);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -23,6 +27,7 @@ const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, status } = req.body;
+
     const department = await Department.findByPk(id);
     if (!department)
       return res.status(404).json({ message: "Department not found" });
@@ -37,12 +42,8 @@ const updateDepartment = async (req, res) => {
 const deleteDepartment = async (req, res) => {
   try {
     const { id } = req.params;
-    const department = await Department.findByPk(id);
-    if (!department)
-      return res.status(404).json({ message: "Department not found" });
-
-    await department.destroy();
-    res.json({ message: "Department deleted" });
+    await Department.destroy({ where: { id } });
+    res.json({ message: "Department deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

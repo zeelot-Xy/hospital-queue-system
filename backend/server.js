@@ -50,6 +50,29 @@ app.get("/health", (req, res) =>
   res.json({ status: "Server running - Phase 1 Complete" }),
 );
 
+// Protected routes
+app.use("/api/departments", departmentRoutes);
+app.use("/api/doctors", doctorRoutes);
+
+// Keep the dev users route for testing
+app.get(
+  "/api/dev/users",
+  authenticateToken,
+  authorizeRole("admin", "staff"),
+  async (req, res) => {
+    try {
+      const { User } = require("./models/index");
+      const users = await User.findAll({
+        attributes: ["id", "full_name", "email", "phone", "role"],
+        order: [["createdAt", "DESC"]],
+      });
+      res.json({ users });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+);
+
 const startServer = async () => {
   try {
     await sequelize.authenticate();

@@ -4,8 +4,14 @@ const getAllDoctors = async (req, res) => {
   try {
     const doctors = await Doctor.findAll({
       include: [
-        { model: User, attributes: ["full_name", "email", "phone"] },
-        { model: Department, attributes: ["name"] },
+        {
+          model: User,
+          attributes: ["id", "full_name", "email", "phone"],
+        },
+        {
+          model: Department,
+          attributes: ["id", "name"],
+        },
       ],
       order: [["createdAt", "DESC"]],
     });
