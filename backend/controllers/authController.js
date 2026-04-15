@@ -13,39 +13,39 @@ const register = async (req, res) => {
       specialization,
       department_id,
     } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    // Check if user exists
-    const existingUser = await User.findOne({ where: { email } });
+    if (!normalizedEmail) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const existingUser = await User.findOne({
+      where: { email: normalizedEmail },
+    });
     if (existingUser) {
       return res
         .status(400)
         .json({ message: "User already exists with this email" });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create User
     const user = await User.create({
       full_name,
-      email,
+      email: normalizedEmail,
       phone,
       password: hashedPassword,
       role: role || "patient",
     });
 
-    let doctor = null;
-
     if (role === "doctor") {
-      // For doctor, department_id is required
       if (!department_id) {
         return res.status(400).json({
           message: "Department ID is required for doctor registration",
         });
       }
 
-      // Check if department exists
       const departmentExists = await Department.findByPk(department_id);
       if (!departmentExists) {
         return res.status(400).json({
@@ -53,14 +53,13 @@ const register = async (req, res) => {
         });
       }
 
-      doctor = await Doctor.create({
+      await Doctor.create({
         user_id: user.id,
-        department_id: parseInt(department_id),
+        department_id: parseInt(department_id, 10),
         specialization: specialization || "General Medicine",
       });
     }
 
-    // Generate JWT
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,
@@ -85,41 +84,25 @@ const register = async (req, res) => {
     });
   }
 };
+
 const login = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
+    const normalizedEmail = email?.trim().toLowerCase();
 
-    console.log("🔐 Login attempt:", { email, role }); // ← DEBUG LOG
-
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res
         .status(400)
         .json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email: normalizedEmail } });
     if (!user) {
-      console.log("❌ User not found for email:", email);
       return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    console.log("✅ User found:", {
-      id: user.id,
-      role: user.role,
-      full_name: user.full_name,
-    });
-
-    // Check role if provided
-    if (role && user.role !== role) {
-      console.log("❌ Role mismatch. Expected:", role, "Actual:", user.role);
-      return res.status(400).json({
-        message: `This account is registered as ${user.role}, not ${role}`,
-      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log("❌ Password mismatch for user:", email);
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
@@ -128,8 +111,6 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
-
-    console.log("✅ Login successful for:", email);
 
     res.json({
       message: "Login successful",
@@ -143,7 +124,7 @@ const login = async (req, res) => {
       token,
     });
   } catch (error) {
-    console.error("💥 Login server error:", error);
+    console.error("Login server error:", error);
     res.status(500).json({ message: "Server error during login" });
   }
 };

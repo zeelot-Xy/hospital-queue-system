@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "setup": "cd backend && npm install && cd ../frontend && npm install"
+    "setup": "cd backend && npm install && cd ../frontend && npm install",
+    "reset:auth": "node backend/scripts/resetAuthData.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

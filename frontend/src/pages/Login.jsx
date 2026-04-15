@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Lock, Stethoscope, Users } from "lucide-react";
+import { User, Lock, Stethoscope } from "lucide-react";
 import api from "../lib/api";
 import { disconnectSocket } from "../lib/socket";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("patient");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -21,7 +20,6 @@ export default function Login() {
       const res = await api.post("/auth/login", {
         email: email.trim(),
         password,
-        role,
       });
 
       localStorage.setItem("token", res.data.token);
@@ -59,32 +57,6 @@ export default function Login() {
         )}
 
         <form onSubmit={handleLogin} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Role
-            </label>
-            <div className="grid grid-cols-3 gap-3">
-              {["patient", "doctor", "staff"].map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setRole(item)}
-                  className={`p-4 rounded-2xl text-sm font-medium transition-all flex flex-col items-center gap-2 border-2 ${
-                    role === item
-                      ? "border-teal-600 bg-teal-50 text-teal-700 shadow-sm"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}>
-                  {item === "doctor" ? (
-                    <Stethoscope className="w-6 h-6" />
-                  ) : (
-                    <Users className="w-6 h-6" />
-                  )}
-                  <span className="capitalize">{item}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email Address
@@ -127,7 +99,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-600 mt-8">
+        <p className="text-center text-sm text-gray-600 mt-6">
           New here?{" "}
           <Link to="/register" className="text-teal-600 font-medium hover:underline">
             Create an account

@@ -127,7 +127,7 @@ const startServer = async () => {
     await sequelize.sync({ alter: true });
     console.log("Tables synced");
 
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`Backend running on http://localhost:${PORT}`);
     });
   } catch (error) {
