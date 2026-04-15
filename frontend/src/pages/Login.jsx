@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 import { User, Lock, Stethoscope, Users } from "lucide-react";
+import api from "../lib/api";
+import { disconnectSocket } from "../lib/socket";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,34 +18,24 @@ export default function Login() {
     setError("");
 
     try {
-      console.log("Attempting login with role:", role); // ← DEBUG
-
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
+      const res = await api.post("/auth/login", {
         email: email.trim(),
         password,
         role,
       });
 
-      console.log("Login response:", res.data);
-
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("user", JSON.stringify(res.data.user));
+      disconnectSocket();
 
-      // Role-based redirect
-      const userRole = res.data.user.role;
-      if (userRole === "patient") navigate("/dashboard/patient");
-      else if (userRole === "doctor") navigate("/dashboard/doctor");
+      if (res.data.user.role === "patient") navigate("/dashboard/patient");
+      else if (res.data.user.role === "doctor") navigate("/dashboard/doctor");
       else navigate("/dashboard/staff");
     } catch (err) {
-      const errorMsg =
+      setError(
         err.response?.data?.message ||
-        "Login failed. Please check your credentials.";
-      setError(errorMsg);
-      console.error("Login error details:", {
-        status: err.response?.status,
-        message: err.response?.data?.message,
-        fullError: err,
-      });
+          "Login failed. Please check your credentials.",
+      );
     } finally {
       setLoading(false);
     }
@@ -73,20 +64,22 @@ export default function Login() {
               Select Role
             </label>
             <div className="grid grid-cols-3 gap-3">
-              {["patient", "doctor", "staff"].map((r) => (
+              {["patient", "doctor", "staff"].map((item) => (
                 <button
-                  key={r}
+                  key={item}
                   type="button"
-                  onClick={() => setRole(r)}
+                  onClick={() => setRole(item)}
                   className={`p-4 rounded-2xl text-sm font-medium transition-all flex flex-col items-center gap-2 border-2 ${
-                    role === r
+                    role === item
                       ? "border-teal-600 bg-teal-50 text-teal-700 shadow-sm"
                       : "border-gray-200 hover:border-gray-300"
                   }`}>
-                  {r === "patient" && <Users className="w-6 h-6" />}
-                  {r === "doctor" && <Stethoscope className="w-6 h-6" />}
-                  {r === "staff" && <Users className="w-6 h-6" />}
-                  <span className="capitalize">{r}</span>
+                  {item === "doctor" ? (
+                    <Stethoscope className="w-6 h-6" />
+                  ) : (
+                    <Users className="w-6 h-6" />
+                  )}
+                  <span className="capitalize">{item}</span>
                 </button>
               ))}
             </div>
@@ -120,7 +113,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-11 pr-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 required
               />
             </div>
@@ -136,11 +129,9 @@ export default function Login() {
 
         <p className="text-center text-sm text-gray-600 mt-8">
           New here?{" "}
-          <a
-            href="/register"
-            className="text-teal-600 font-medium hover:underline">
+          <Link to="/register" className="text-teal-600 font-medium hover:underline">
             Create an account
-          </a>
+          </Link>
         </p>
       </div>
     </div>

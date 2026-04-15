@@ -12,12 +12,9 @@ const {
 
 const router = express.Router();
 
-router.get(
-  "/",
-  authenticateToken,
-  authorizeRole("staff", "admin"),
-  getAllDepartments,
-);
+// Allow all authenticated users to view departments.
+// Only staff/admin can create, update, or delete.
+router.get("/", authenticateToken, getAllDepartments);
 router.post(
   "/",
   authenticateToken,

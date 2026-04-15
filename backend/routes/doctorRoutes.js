@@ -5,11 +5,18 @@ const {
 } = require("../middleware/authMiddleware");
 const {
   getAllDoctors,
+  getMyDoctorProfile,
   createDoctor,
 } = require("../controllers/doctorController");
 
 const router = express.Router();
 
+router.get(
+  "/me",
+  authenticateToken,
+  authorizeRole("doctor"),
+  getMyDoctorProfile,
+);
 router.get(
   "/",
   authenticateToken,

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Link, useNavigate } from "react-router-dom";
 import { User, Lock, Phone, Stethoscope, Users } from "lucide-react";
+import api from "../lib/api";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -19,14 +19,14 @@ export default function Register() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((current) => ({
+      ...current,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleRoleChange = (role) => {
-    setFormData({ ...formData, role });
+    setFormData((current) => ({ ...current, role }));
   };
 
   const handleRegister = async (e) => {
@@ -38,22 +38,14 @@ export default function Register() {
     try {
       const payload = { ...formData };
 
-      // Only send specialization & department_id if role is doctor
-      if (formData.role !== "doctor") {
+      if (payload.role !== "doctor") {
         delete payload.specialization;
         delete payload.department_id;
       }
 
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/register",
-        payload,
-      );
-
+      await api.post("/auth/register", payload);
       setSuccess("Account created successfully! Redirecting to login...");
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setError(
         err.response?.data?.message || "Registration failed. Please try again.",
@@ -86,32 +78,32 @@ export default function Register() {
         )}
 
         <form onSubmit={handleRegister} className="space-y-6">
-          {/* Role Selector */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               I am registering as
             </label>
             <div className="grid grid-cols-3 gap-3">
-              {["patient", "doctor", "staff"].map((r) => (
+              {["patient", "doctor", "staff"].map((item) => (
                 <button
-                  key={r}
+                  key={item}
                   type="button"
-                  onClick={() => handleRoleChange(r)}
+                  onClick={() => handleRoleChange(item)}
                   className={`p-4 rounded-2xl text-sm font-medium transition-all flex flex-col items-center gap-2 border-2 ${
-                    formData.role === r
+                    formData.role === item
                       ? "border-teal-600 bg-teal-50 text-teal-700 shadow-sm"
                       : "border-gray-200 hover:border-gray-300"
                   }`}>
-                  {r === "patient" && <Users className="w-6 h-6" />}
-                  {r === "doctor" && <Stethoscope className="w-6 h-6" />}
-                  {r === "staff" && <Users className="w-6 h-6" />}
-                  <span className="capitalize">{r}</span>
+                  {item === "doctor" ? (
+                    <Stethoscope className="w-6 h-6" />
+                  ) : (
+                    <Users className="w-6 h-6" />
+                  )}
+                  <span className="capitalize">{item}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Full Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Full Name
@@ -130,7 +122,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email Address
@@ -149,7 +140,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Phone */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Phone Number
@@ -168,7 +158,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
@@ -187,7 +176,6 @@ export default function Register() {
             </div>
           </div>
 
-          {/* Doctor-only fields */}
           {formData.role === "doctor" && (
             <>
               <div>
@@ -200,7 +188,7 @@ export default function Register() {
                   value={formData.specialization}
                   onChange={handleChange}
                   className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                  placeholder="e.g. Cardiologist, Pediatrician"
+                  placeholder="Cardiologist"
                   required
                 />
               </div>
@@ -215,15 +203,13 @@ export default function Register() {
                   value={formData.department_id}
                   onChange={handleChange}
                   className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                  placeholder="Enter 1, 2, 3 or 4 (after seeding)"
+                  placeholder="Enter an existing department ID"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Run seed.js first to create departments
-                </p>
               </div>
             </>
           )}
+
           <button
             type="submit"
             disabled={loading}
@@ -234,11 +220,9 @@ export default function Register() {
 
         <p className="text-center text-sm text-gray-600 mt-8">
           Already have an account?{" "}
-          <a
-            href="/login"
-            className="text-teal-600 font-medium hover:underline">
+          <Link to="/login" className="text-teal-600 font-medium hover:underline">
             Sign in here
-          </a>
+          </Link>
         </p>
       </div>
     </div>
