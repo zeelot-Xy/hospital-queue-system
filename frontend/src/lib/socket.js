@@ -10,9 +10,11 @@ export const getSocket = () => {
   }
 
   if (!socket) {
-    socket = io(import.meta.env.VITE_API_URL?.replace("/api", "") || "http://localhost:5000", {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || undefined;
+    socket = io(socketUrl, {
       autoConnect: true,
       auth: { token },
+      path: "/socket.io",
     });
   } else {
     socket.auth = { token };

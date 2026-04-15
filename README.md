@@ -23,12 +23,21 @@ A modern web-based hospital queue management system built with Express.js, React
 # 1. Clone & install
 npm run setup
 
-# 2. Start PostgreSQL
+# 2. Start PostgreSQL only
 docker compose up -d
 
-# 3. Start both frontend and backend from the repo root
+# 3. Start the app servers from the repo root
 npm run dev
 
 # Optional: clear all users and dependent queue data while keeping departments
 npm run reset:auth
 ```
+
+## Local Development Default
+
+- `docker compose up -d` starts only PostgreSQL for this project.
+- `npm run dev` starts the backend and frontend app servers.
+- The frontend runs on port `3000`.
+- The backend runs on port `5000`.
+- For phone testing on the same Wi-Fi, open `http://<your-computer-ip>:3000`.
+- The frontend now proxies `/api` and `/socket.io` to the backend, so mobile devices should not need hardcoded localhost API settings.
