@@ -15,20 +15,33 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const frontendOrigin = process.env.FRONTEND_URL || "http://localhost:5173";
-
-app.use(
-  cors({
-    origin: frontendOrigin,
-    credentials: true,
-  }),
+const allowedOrigins = Array.from(
+  new Set([
+    frontendOrigin,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ]),
 );
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`Origin ${origin} is not allowed by CORS`));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const io = new Server(server, {
-  cors: {
-    origin: frontendOrigin,
-    credentials: true,
-  },
+  cors: corsOptions,
 });
 
 app.set("io", io);
