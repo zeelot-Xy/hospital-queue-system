@@ -5,24 +5,14 @@ $services = @(
   @{
     Name = "backend"
     Path = (Join-Path $repoRoot "backend")
-    Command = "npm.cmd run start"
+    Command = "npm.cmd run dev"
     Port = 5000
-    HealthUrl = "http://localhost:5000/health"
-    HealthCheck = {
-      param($response)
-      $response.Content -like '*Queue workflow enabled*'
-    }
   },
   @{
     Name = "frontend"
     Path = (Join-Path $repoRoot "frontend")
     Command = "npm.cmd run dev"
     Port = 3000
-    HealthUrl = "http://localhost:3000"
-    HealthCheck = {
-      param($response)
-      $response.StatusCode -eq 200
-    }
   }
 )
 
@@ -51,17 +41,6 @@ function Test-PortInUse {
   }
 }
 
-function Test-ServiceHealthy {
-  param($Service)
-
-  try {
-    $response = Invoke-WebRequest -Uri $Service.HealthUrl -UseBasicParsing -TimeoutSec 2
-    return & $Service.HealthCheck $response
-  } catch {
-    return $false
-  }
-}
-
 function Get-ListeningPid {
   param([int]$Port)
 
@@ -80,7 +59,7 @@ function Get-ListeningPid {
   return $null
 }
 
-function Stop-StaleListener {
+function StopListener {
   param($Service)
 
   $listenerPid = Get-ListeningPid -Port $Service.Port
@@ -97,12 +76,7 @@ function Stop-StaleListener {
 try {
   foreach ($service in $services) {
     if (Test-PortInUse -Port $service.Port) {
-      if (Test-ServiceHealthy -Service $service) {
-        Write-Host "[$($service.Name)] Reusing existing service on port $($service.Port)"
-        continue
-      }
-
-      if (-not (Stop-StaleListener -Service $service)) {
+      if (-not (StopListener -Service $service)) {
         throw "Port $($service.Port) is already in use by another process and could not be cleared automatically. Stop that process or change the configured port before running npm run dev."
       }
     }

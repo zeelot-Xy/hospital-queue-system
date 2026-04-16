@@ -27,6 +27,7 @@ export default function DoctorDashboard() {
   const [workingAction, setWorkingAction] = useState("");
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
   const [profileForm, setProfileForm] = useState({
     full_name: "",
     phone: "",
@@ -75,6 +76,7 @@ export default function DoctorDashboard() {
       return;
     }
 
+    setProfileError("");
     setProfileForm({
       full_name: doctorProfile.User?.full_name || "",
       phone: doctorProfile.User?.phone || "",
@@ -129,6 +131,7 @@ export default function DoctorDashboard() {
   const handleProfileSave = async (e) => {
     e.preventDefault();
     setSavingProfile(true);
+    setProfileError("");
 
     try {
       const res = await api.put("/doctors/me", {
@@ -154,10 +157,8 @@ export default function DoctorDashboard() {
         "success",
       );
     } catch (err) {
-      showDialog(
-        "Profile Update Failed",
+      setProfileError(
         err.response?.data?.message || "Could not update your profile.",
-        "error",
       );
     } finally {
       setSavingProfile(false);
@@ -484,6 +485,12 @@ export default function DoctorDashboard() {
               ))}
             </select>
           </div>
+
+          {profileError && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {profileError}
+            </div>
+          )}
 
           <button
             type="submit"
