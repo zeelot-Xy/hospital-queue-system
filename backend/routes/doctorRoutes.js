@@ -6,6 +6,7 @@ const {
 const {
   getAllDoctors,
   getMyDoctorProfile,
+  updateMyDoctorProfile,
   createDoctor,
 } = require("../controllers/doctorController");
 
@@ -16,6 +17,12 @@ router.get(
   authenticateToken,
   authorizeRole("doctor"),
   getMyDoctorProfile,
+);
+router.put(
+  "/me",
+  authenticateToken,
+  authorizeRole("doctor"),
+  updateMyDoctorProfile,
 );
 router.get(
   "/",

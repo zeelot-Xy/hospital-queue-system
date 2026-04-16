@@ -5,11 +5,13 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  Edit2,
   LogOut,
   PlayCircle,
   Stethoscope,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
+import Modal from "../../components/Modal";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
 import { disconnectSocket, getSocket } from "../../lib/socket";
@@ -20,8 +22,17 @@ export default function DoctorDashboard() {
   const [doctorProfile, setDoctorProfile] = useState(null);
   const [queue, setQueue] = useState([]);
   const [activeQueue, setActiveQueue] = useState(null);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workingAction, setWorkingAction] = useState("");
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    full_name: "",
+    phone: "",
+    specialization: "",
+    department_id: "",
+  });
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: "",
@@ -35,14 +46,18 @@ export default function DoctorDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const [doctorRes, queueRes] = await Promise.all([
+      const [doctorRes, queueRes, departmentRes] = await Promise.all([
         api.get("/doctors/me"),
         api.get("/queue/doctor/me"),
+        api.get("/departments"),
       ]);
 
       setDoctorProfile(doctorRes.data);
       setQueue(queueRes.data.queue);
       setActiveQueue(queueRes.data.activeQueue);
+      setDepartments(
+        departmentRes.data.filter((department) => department.status !== "inactive"),
+      );
     } catch (err) {
       console.error(err);
       showDialog(
@@ -53,6 +68,22 @@ export default function DoctorDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openProfileModal = () => {
+    if (!doctorProfile) {
+      return;
+    }
+
+    setProfileForm({
+      full_name: doctorProfile.User?.full_name || "",
+      phone: doctorProfile.User?.phone || "",
+      specialization: doctorProfile.specialization || "",
+      department_id: doctorProfile.Department?.id
+        ? String(doctorProfile.Department.id)
+        : "",
+    });
+    setShowProfileModal(true);
   };
 
   useEffect(() => {
@@ -92,6 +123,44 @@ export default function DoctorDashboard() {
       return null;
     } finally {
       setWorkingAction("");
+    }
+  };
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+
+    try {
+      const res = await api.put("/doctors/me", {
+        full_name: profileForm.full_name,
+        phone: profileForm.phone,
+        specialization: profileForm.specialization,
+        department_id: Number(profileForm.department_id),
+      });
+
+      setDoctorProfile(res.data);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...user,
+          full_name: res.data.User?.full_name || user.full_name,
+          phone: res.data.User?.phone || user.phone,
+        }),
+      );
+      setShowProfileModal(false);
+      showDialog(
+        "Profile Updated",
+        "Your doctor profile has been updated successfully.",
+        "success",
+      );
+    } catch (err) {
+      showDialog(
+        "Profile Update Failed",
+        err.response?.data?.message || "Could not update your profile.",
+        "error",
+      );
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -138,7 +207,7 @@ export default function DoctorDashboard() {
                       Doctor Profile
                     </p>
                     <h2 className="text-3xl font-bold text-teal-900 mt-2">
-                      Dr. {user.full_name}
+                      Dr. {doctorProfile?.User?.full_name || user.full_name}
                     </h2>
                     <p className="text-gray-600 mt-2">
                       {doctorProfile?.specialization || "General Practice"}
@@ -146,8 +215,16 @@ export default function DoctorDashboard() {
                       {doctorProfile?.Department?.name || "No department assigned"}
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-teal-100 p-4">
-                    <Stethoscope className="w-8 h-8 text-teal-700" />
+                  <div className="flex flex-col items-end gap-3">
+                    <div className="rounded-2xl bg-teal-100 p-4">
+                      <Stethoscope className="w-8 h-8 text-teal-700" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openProfileModal}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:border-teal-400 hover:bg-teal-50 transition-all">
+                      <Edit2 size={16} /> Edit Profile
+                    </button>
                   </div>
                 </div>
 
@@ -325,6 +402,97 @@ export default function DoctorDashboard() {
         message={dialog.message}
         variant={dialog.variant}
       />
+
+      <Modal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        title="Edit Doctor Profile">
+        <form onSubmit={handleProfileSave} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={profileForm.full_name}
+              onChange={(e) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  full_name: e.target.value,
+                }))
+              }
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone Number
+            </label>
+            <input
+              type="tel"
+              value={profileForm.phone}
+              onChange={(e) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  phone: e.target.value,
+                }))
+              }
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Specialization
+            </label>
+            <input
+              type="text"
+              value={profileForm.specialization}
+              onChange={(e) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  specialization: e.target.value,
+                }))
+              }
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Department
+            </label>
+            <select
+              value={profileForm.department_id}
+              onChange={(e) =>
+                setProfileForm((current) => ({
+                  ...current,
+                  department_id: e.target.value,
+                }))
+              }
+              className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
+              required>
+              <option value="">Select Department</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingProfile}
+            className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-3.5 rounded-2xl font-semibold transition-all">
+            {savingProfile ? "Saving Changes..." : "Save Profile Changes"}
+          </button>
+        </form>
+      </Modal>
     </div>
   );
 }

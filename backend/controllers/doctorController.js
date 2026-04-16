@@ -27,6 +27,47 @@ const getMyDoctorProfile = async (req, res) => {
   }
 };
 
+const updateMyDoctorProfile = async (req, res) => {
+  try {
+    const { full_name, phone, department_id, specialization } = req.body;
+    const doctor = await Doctor.findOne({ where: { user_id: req.user.id } });
+
+    if (!doctor) {
+      return res.status(404).json({ message: "Doctor profile not found" });
+    }
+
+    if (!full_name?.trim() || !phone?.trim() || !specialization?.trim() || !department_id) {
+      return res.status(400).json({
+        message: "Full name, phone, department, and specialization are required",
+      });
+    }
+
+    const department = await Department.findByPk(department_id);
+    if (!department) {
+      return res.status(404).json({ message: "Department not found" });
+    }
+
+    await Promise.all([
+      User.update(
+        {
+          full_name: full_name.trim(),
+          phone: phone.trim(),
+        },
+        { where: { id: req.user.id } },
+      ),
+      doctor.update({
+        department_id: Number(department_id),
+        specialization: specialization.trim(),
+      }),
+    ]);
+
+    const updatedDoctor = await getDoctorByUserId(req.user.id);
+    res.json(updatedDoctor);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const createDoctor = async (req, res) => {
   try {
     const { user_id, department_id, specialization } = req.body;
@@ -79,4 +120,9 @@ const createDoctor = async (req, res) => {
   }
 };
 
-module.exports = { getAllDoctors, getMyDoctorProfile, createDoctor };
+module.exports = {
+  getAllDoctors,
+  getMyDoctorProfile,
+  updateMyDoctorProfile,
+  createDoctor,
+};
