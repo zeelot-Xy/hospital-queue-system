@@ -6,11 +6,13 @@ export default function Modal({
   title,
   children,
   maxWidthClass = "max-w-lg",
+  overlayClassName = "z-50",
 }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 p-4">
+    <div
+      className={`fixed inset-0 overflow-y-auto bg-black bg-opacity-50 p-4 ${overlayClassName}`}>
       <div className="flex min-h-full items-start justify-center py-6 sm:items-center">
         <div
           className={`flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ${maxWidthClass}`}>

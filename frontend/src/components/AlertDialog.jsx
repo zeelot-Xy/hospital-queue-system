@@ -39,7 +39,11 @@ export default function AlertDialog({
   const isConfirmDialog = Boolean(onConfirm);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      overlayClassName="z-[70]">
       <div className="space-y-6">
         <div className="flex items-start gap-4">
           <div className={`rounded-2xl p-3 ${config.badgeClass}`}>
