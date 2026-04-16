@@ -25,10 +25,13 @@ const Department = require("./Department")(sequelize);
 const Doctor = require("./Doctor")(sequelize);
 const Appointment = require("./Appointment")(sequelize);
 const Queue = require("./Queue")(sequelize);
+const PatientProfile = require("./PatientProfile")(sequelize);
 
 // Define Associations
 User.hasOne(Doctor, { foreignKey: "user_id" });
 Doctor.belongsTo(User, { foreignKey: "user_id" });
+User.hasOne(PatientProfile, { foreignKey: "user_id", as: "PatientProfile" });
+PatientProfile.belongsTo(User, { foreignKey: "user_id", as: "User" });
 
 Doctor.belongsTo(Department, { foreignKey: "department_id" });
 Department.hasMany(Doctor, { foreignKey: "department_id" });
@@ -55,4 +58,5 @@ module.exports = {
   Doctor,
   Appointment,
   Queue,
+  PatientProfile,
 };

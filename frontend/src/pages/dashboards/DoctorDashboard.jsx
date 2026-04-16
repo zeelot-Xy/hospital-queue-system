@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   Edit2,
+  FileText,
   LogOut,
   PlayCircle,
   Stethoscope,
@@ -28,6 +29,11 @@ export default function DoctorDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState("");
+  const [showPatientProfileModal, setShowPatientProfileModal] = useState(false);
+  const [loadingPatientProfile, setLoadingPatientProfile] = useState(false);
+  const [savingPatientNotes, setSavingPatientNotes] = useState(false);
+  const [patientProfileRecord, setPatientProfileRecord] = useState(null);
+  const [patientNotesDraft, setPatientNotesDraft] = useState("");
   const [profileForm, setProfileForm] = useState({
     full_name: "",
     phone: "",
@@ -165,6 +171,57 @@ export default function DoctorDashboard() {
     }
   };
 
+  const openPatientProfileModal = async (patientId) => {
+    setLoadingPatientProfile(true);
+    setShowPatientProfileModal(true);
+
+    try {
+      const res = await api.get(`/patient-profile/patient/${patientId}`);
+      setPatientProfileRecord(res.data);
+      setPatientNotesDraft(res.data.profile?.last_visit_notes || "");
+    } catch (err) {
+      setShowPatientProfileModal(false);
+      showDialog(
+        "Patient Profile Unavailable",
+        err.response?.data?.message || "Could not load this patient profile.",
+        "error",
+      );
+    } finally {
+      setLoadingPatientProfile(false);
+    }
+  };
+
+  const handleSavePatientNotes = async (patientId) => {
+    setSavingPatientNotes(true);
+
+    try {
+      const res = await api.put(`/patient-profile/patient/${patientId}/notes`, {
+        last_visit_notes: patientNotesDraft,
+      });
+
+      setPatientProfileRecord((current) => ({
+        ...current,
+        profile: {
+          ...current.profile,
+          last_visit_notes: res.data.last_visit_notes || "",
+        },
+      }));
+      showDialog(
+        "Visit Notes Saved",
+        "The patient's latest consultation notes have been updated.",
+        "success",
+      );
+    } catch (err) {
+      showDialog(
+        "Notes Save Failed",
+        err.response?.data?.message || "Could not save visit notes.",
+        "error",
+      );
+    } finally {
+      setSavingPatientNotes(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     disconnectSocket();
@@ -290,6 +347,12 @@ export default function DoctorDashboard() {
                         Appointment: {activeQueue.Appointment?.appointment_date} at{" "}
                         {activeQueue.Appointment?.appointment_time?.slice(0, 5)}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => openPatientProfileModal(activeQueue.Patient?.id)}
+                        className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:border-teal-400 transition-all">
+                        <FileText size={16} /> View Patient Profile
+                      </button>
                     </div>
 
                     <div className="grid gap-3">
@@ -371,6 +434,12 @@ export default function DoctorDashboard() {
                           }`}>
                           {formatQueueStatus(item.status)}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => openPatientProfileModal(item.Patient?.id)}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition-all">
+                          <FileText size={16} /> View Patient Profile
+                        </button>
                         {item.status === "waiting" && (
                           <span className="inline-flex items-center gap-2 text-sm text-gray-500">
                             <Clock3 size={16} /> Awaiting your next call
@@ -499,6 +568,81 @@ export default function DoctorDashboard() {
             {savingProfile ? "Saving Changes..." : "Save Profile Changes"}
           </button>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={showPatientProfileModal}
+        onClose={() => setShowPatientProfileModal(false)}
+        title={
+          patientProfileRecord?.patient?.full_name
+            ? `${patientProfileRecord.patient.full_name} Profile`
+            : "Patient Profile"
+        }
+        maxWidthClass="max-w-2xl">
+        {loadingPatientProfile ? (
+          <div className="py-10 text-center text-gray-500">Loading patient profile...</div>
+        ) : patientProfileRecord ? (
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                <p className="text-sm text-gray-500">Blood Group</p>
+                <p className="font-semibold text-lg mt-1">
+                  {patientProfileRecord.profile?.blood_group || "Not provided"}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                <p className="text-sm text-gray-500">Phone</p>
+                <p className="font-semibold text-lg mt-1">
+                  {patientProfileRecord.patient?.phone || "Not provided"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Allergies</p>
+              <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
+                {patientProfileRecord.profile?.allergies || "No allergy information provided."}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Chronic Conditions</p>
+              <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
+                {patientProfileRecord.profile?.chronic_conditions || "No chronic conditions recorded."}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Last Visit Notes
+              </label>
+              {!patientProfileRecord.can_edit_notes && (
+                <p className="mb-2 text-sm text-amber-700">
+                  Notes become editable once the patient has been admitted, is in consultation, or has completed consultation.
+                </p>
+              )}
+              <textarea
+                value={patientNotesDraft}
+                onChange={(e) => setPatientNotesDraft(e.target.value)}
+                className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600 h-32"
+                placeholder="Add the latest consultation summary for this patient"
+                disabled={!patientProfileRecord.can_edit_notes}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleSavePatientNotes(patientProfileRecord.patient?.id)}
+              disabled={savingPatientNotes || !patientProfileRecord.can_edit_notes}
+              className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-3.5 rounded-2xl font-semibold transition-all">
+              {savingPatientNotes ? "Saving Notes..." : "Save Last Visit Notes"}
+            </button>
+          </div>
+        ) : (
+          <div className="py-10 text-center text-gray-500">
+            Patient profile details are not available right now.
+          </div>
+        )}
       </Modal>
     </div>
   );

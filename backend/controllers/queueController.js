@@ -5,6 +5,7 @@ const {
   Department,
   User,
   Doctor,
+  PatientProfile,
 } = require("../models");
 const { getDoctorByUserId } = require("../utils/doctorUtils");
 const { emitQueueEvent, emitQueueRefresh } = require("../utils/socketEvents");
@@ -15,6 +16,53 @@ const queueInclude = [
     model: User,
     as: "Patient",
     attributes: ["id", "full_name", "email", "phone"],
+  },
+  {
+    model: Doctor,
+    include: [
+      {
+        model: User,
+        attributes: ["id", "full_name", "email", "phone"],
+      },
+      {
+        model: Department,
+        attributes: ["id", "name"],
+      },
+    ],
+  },
+  {
+    model: Department,
+    attributes: ["id", "name"],
+  },
+  {
+    model: Appointment,
+    attributes: [
+      "id",
+      "appointment_date",
+      "appointment_time",
+      "status",
+      "arrived_at",
+    ],
+  },
+];
+
+const doctorQueueInclude = [
+  {
+    model: User,
+    as: "Patient",
+    attributes: ["id", "full_name", "email", "phone"],
+    include: [
+      {
+        model: PatientProfile,
+        as: "PatientProfile",
+        attributes: [
+          "blood_group",
+          "allergies",
+          "chronic_conditions",
+          "last_visit_notes",
+        ],
+      },
+    ],
   },
   {
     model: Doctor,
@@ -175,7 +223,7 @@ const getDoctorQueue = async (req, res) => {
           [Op.in]: ["waiting", "called", "admitted", "in_consultation"],
         },
       },
-      include: queueInclude,
+      include: doctorQueueInclude,
       order: [["queue_number", "ASC"]],
     });
 

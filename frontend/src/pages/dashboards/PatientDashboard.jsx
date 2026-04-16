@@ -19,6 +19,24 @@ const initialBookingState = {
   appointment_time: "",
 };
 
+const bloodGroupOptions = [
+  "A+",
+  "A-",
+  "B+",
+  "B-",
+  "AB+",
+  "AB-",
+  "O+",
+  "O-",
+];
+
+const initialPatientProfile = {
+  blood_group: "",
+  allergies: "",
+  chronic_conditions: "",
+  last_visit_notes: "",
+};
+
 export default function PatientDashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -28,9 +46,11 @@ export default function PatientDashboard() {
   const [doctors, setDoctors] = useState([]);
   const [myAppointments, setMyAppointments] = useState([]);
   const [currentQueue, setCurrentQueue] = useState(null);
+  const [patientProfile, setPatientProfile] = useState(initialPatientProfile);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [bookingForm, setBookingForm] = useState(initialBookingState);
   const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: "",
@@ -42,6 +62,10 @@ export default function PatientDashboard() {
   });
 
   const today = new Date().toISOString().split("T")[0];
+  const profileIsIncomplete =
+    !patientProfile.blood_group &&
+    !patientProfile.allergies &&
+    !patientProfile.chronic_conditions;
 
   const openDialog = ({
     title,
@@ -110,10 +134,25 @@ export default function PatientDashboard() {
     }
   };
 
+  const fetchPatientProfile = async () => {
+    try {
+      const res = await api.get("/patient-profile/me");
+      setPatientProfile({
+        blood_group: res.data.blood_group || "",
+        allergies: res.data.allergies || "",
+        chronic_conditions: res.data.chronic_conditions || "",
+        last_visit_notes: res.data.last_visit_notes || "",
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchMyAppointments();
     fetchQueueStatus();
+    fetchPatientProfile();
   }, []);
 
   useEffect(() => {
@@ -215,6 +254,40 @@ export default function PatientDashboard() {
     });
   };
 
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+
+    try {
+      const res = await api.put("/patient-profile/me", {
+        blood_group: patientProfile.blood_group,
+        allergies: patientProfile.allergies,
+        chronic_conditions: patientProfile.chronic_conditions,
+      });
+
+      setPatientProfile((current) => ({
+        ...current,
+        blood_group: res.data.blood_group || "",
+        allergies: res.data.allergies || "",
+        chronic_conditions: res.data.chronic_conditions || "",
+        last_visit_notes: res.data.last_visit_notes || current.last_visit_notes,
+      }));
+      openDialog({
+        title: "Profile Saved",
+        message: "Your patient profile has been updated successfully.",
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Profile Save Failed",
+        message: err.response?.data?.message || "Could not save your profile.",
+        variant: "error",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     disconnectSocket();
@@ -245,6 +318,7 @@ export default function PatientDashboard() {
             ["book", "Book Appointment"],
             ["appointments", "My Appointments"],
             ["queue", "Queue Status"],
+            ["profile", "My Profile"],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -265,6 +339,15 @@ export default function PatientDashboard() {
 
         {activeTab === "book" && (
           <div className="space-y-8">
+            {profileIsIncomplete && (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5 text-amber-900">
+                <p className="font-semibold">Complete your patient profile</p>
+                <p className="text-sm mt-1">
+                  Adding blood group, allergies, and chronic conditions helps doctors prepare faster before your consultation.
+                </p>
+              </div>
+            )}
+
             <div className="medical-card p-8">
               <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
                 <Calendar className="text-teal-600" /> Select Department
@@ -511,6 +594,97 @@ export default function PatientDashboard() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "profile" && (
+          <div className="medical-card p-8 space-y-8">
+            <div>
+              <h2 className="text-2xl font-semibold">My Medical Profile</h2>
+              <p className="text-gray-600 mt-2">
+                Keep your essential health information up to date so doctors can review it quickly during queue and consultation.
+              </p>
+            </div>
+
+            <form onSubmit={handleProfileSave} className="grid gap-6 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Blood Group
+                </label>
+                <select
+                  value={patientProfile.blood_group}
+                  onChange={(e) =>
+                    setPatientProfile((current) => ({
+                      ...current,
+                      blood_group: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600">
+                  <option value="">Select blood group</option>
+                  {bloodGroupOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="rounded-3xl bg-slate-50 px-5 py-4 text-sm text-gray-700 md:col-span-1">
+                Your doctor can view this profile while you are in their queue. Only doctors can see your consultation notes.
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Allergies
+                </label>
+                <textarea
+                  value={patientProfile.allergies}
+                  onChange={(e) =>
+                    setPatientProfile((current) => ({
+                      ...current,
+                      allergies: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600 h-28"
+                  placeholder="List medicine, food, or environmental allergies"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Chronic Conditions
+                </label>
+                <textarea
+                  value={patientProfile.chronic_conditions}
+                  onChange={(e) =>
+                    setPatientProfile((current) => ({
+                      ...current,
+                      chronic_conditions: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600 h-28"
+                  placeholder="Add long-term conditions such as hypertension, asthma, or diabetes"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Last Visit Notes
+                </label>
+                <div className="rounded-2xl border border-gray-200 bg-slate-50 px-4 py-4 text-gray-700 min-h-[112px]">
+                  {patientProfile.last_visit_notes || "Your doctor has not added notes from a previous visit yet."}
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-4 rounded-2xl font-semibold transition-all">
+                  {savingProfile ? "Saving Profile..." : "Save Medical Profile"}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
