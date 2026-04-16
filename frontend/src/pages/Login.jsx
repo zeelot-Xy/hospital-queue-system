@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Lock, Stethoscope } from "lucide-react";
+import { User, Stethoscope } from "lucide-react";
 import api from "../lib/api";
+import PasswordField from "../components/PasswordField";
 import { disconnectSocket } from "../lib/socket";
 
 export default function Login() {
@@ -74,22 +75,13 @@ export default function Login() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-          </div>
+          <PasswordField
+            label="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+          />
 
           <button
             type="submit"

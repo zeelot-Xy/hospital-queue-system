@@ -9,6 +9,7 @@ import {
   PlayCircle,
   Stethoscope,
 } from "lucide-react";
+import AlertDialog from "../../components/AlertDialog";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
 import { disconnectSocket, getSocket } from "../../lib/socket";
@@ -21,6 +22,16 @@ export default function DoctorDashboard() {
   const [activeQueue, setActiveQueue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [workingAction, setWorkingAction] = useState("");
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
+
+  const showDialog = (title, message, variant = "info") => {
+    setDialog({ isOpen: true, title, message, variant });
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -34,7 +45,11 @@ export default function DoctorDashboard() {
       setActiveQueue(queueRes.data.activeQueue);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to load doctor dashboard");
+      showDialog(
+        "Dashboard Unavailable",
+        err.response?.data?.message || "Failed to load doctor dashboard",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -65,11 +80,15 @@ export default function DoctorDashboard() {
       const res = await api.post(path, body);
       fetchDashboard();
       if (successMessage) {
-        alert(successMessage);
+        showDialog("Action Completed", successMessage, "success");
       }
       return res.data;
     } catch (err) {
-      alert(err.response?.data?.message || "Action failed");
+      showDialog(
+        "Action Failed",
+        err.response?.data?.message || "Action failed",
+        "error",
+      );
       return null;
     } finally {
       setWorkingAction("");
@@ -298,6 +317,14 @@ export default function DoctorDashboard() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        isOpen={dialog.isOpen}
+        onClose={() => setDialog((current) => ({ ...current, isOpen: false }))}
+        title={dialog.title}
+        message={dialog.message}
+        variant={dialog.variant}
+      />
     </div>
   );
 }

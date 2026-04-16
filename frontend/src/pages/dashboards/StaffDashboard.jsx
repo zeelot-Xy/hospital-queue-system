@@ -10,6 +10,7 @@ import {
   Trash2,
   UserRoundPlus,
 } from "lucide-react";
+import AlertDialog from "../../components/AlertDialog";
 import Modal from "../../components/Modal";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
@@ -33,6 +34,38 @@ export default function StaffDashboard() {
     department_id: "",
     specialization: "",
   });
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    confirmText: "OK",
+    cancelText: undefined,
+    onConfirm: null,
+  });
+
+  const openDialog = ({
+    title,
+    message,
+    variant = "info",
+    confirmText = "OK",
+    cancelText,
+    onConfirm = null,
+  }) => {
+    setDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      confirmText,
+      cancelText,
+      onConfirm,
+    });
+  };
+
+  const closeDialog = () => {
+    setDialog((current) => ({ ...current, isOpen: false, onConfirm: null }));
+  };
 
   const fetchManagementData = async () => {
     const [deptRes, docRes] = await Promise.all([
@@ -55,7 +88,11 @@ export default function StaffDashboard() {
       await Promise.all([fetchManagementData(), fetchQueueBoard()]);
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Failed to load dashboard data");
+      openDialog({
+        title: "Dashboard Unavailable",
+        message: err.response?.data?.message || "Failed to load dashboard data",
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -113,26 +150,50 @@ export default function StaffDashboard() {
       }
       setShowDeptModal(false);
       await fetchManagementData();
-      alert(editingDept ? "Department updated successfully" : "Department created successfully");
+      openDialog({
+        title: "Department Saved",
+        message: editingDept
+          ? "Department updated successfully."
+          : "Department created successfully.",
+        variant: "success",
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Department operation failed");
+      openDialog({
+        title: "Department Error",
+        message: err.response?.data?.message || "Department operation failed",
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteDepartment = async (id) => {
-    if (!window.confirm("Delete this department?")) {
-      return;
-    }
-
-    try {
-      await api.delete(`/departments/${id}`);
-      await fetchManagementData();
-      alert("Department deleted");
-    } catch (err) {
-      alert(err.response?.data?.message || "Cannot delete this department");
-    }
+    openDialog({
+      title: "Delete Department",
+      message: "Delete this department? This cannot be undone.",
+      variant: "warning",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      onConfirm: async () => {
+        try {
+          await api.delete(`/departments/${id}`);
+          await fetchManagementData();
+          openDialog({
+            title: "Department Deleted",
+            message: "The department has been removed.",
+            variant: "success",
+          });
+        } catch (err) {
+          openDialog({
+            title: "Delete Failed",
+            message:
+              err.response?.data?.message || "Cannot delete this department",
+            variant: "error",
+          });
+        }
+      },
+    });
   };
 
   const handleCreateDoctor = async (e) => {
@@ -147,9 +208,17 @@ export default function StaffDashboard() {
       setShowDoctorModal(false);
       setDoctorForm({ user_id: "", department_id: "", specialization: "" });
       await fetchManagementData();
-      alert("Doctor added successfully");
+      openDialog({
+        title: "Doctor Added",
+        message: "Doctor added successfully.",
+        variant: "success",
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to add doctor");
+      openDialog({
+        title: "Doctor Could Not Be Added",
+        message: err.response?.data?.message || "Failed to add doctor",
+        variant: "error",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -159,9 +228,17 @@ export default function StaffDashboard() {
     try {
       await api.post("/queue/confirm-admit", { queue_id: queueId });
       await fetchQueueBoard();
-      alert("Patient marked as admitted");
+      openDialog({
+        title: "Patient Admitted",
+        message: "The patient has been marked as admitted.",
+        variant: "success",
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Could not confirm admission");
+      openDialog({
+        title: "Admission Failed",
+        message: err.response?.data?.message || "Could not confirm admission",
+        variant: "error",
+      });
     }
   };
 
@@ -169,9 +246,17 @@ export default function StaffDashboard() {
     try {
       await api.post("/queue/complete", { queue_id: queueId });
       await fetchQueueBoard();
-      alert("Queue item completed");
+      openDialog({
+        title: "Queue Completed",
+        message: "The queue item has been completed.",
+        variant: "success",
+      });
     } catch (err) {
-      alert(err.response?.data?.message || "Could not complete queue item");
+      openDialog({
+        title: "Completion Failed",
+        message: err.response?.data?.message || "Could not complete queue item",
+        variant: "error",
+      });
     }
   };
 
@@ -556,6 +641,23 @@ export default function StaffDashboard() {
           </button>
         </form>
       </Modal>
+
+      <AlertDialog
+        isOpen={dialog.isOpen}
+        onClose={closeDialog}
+        title={dialog.title}
+        message={dialog.message}
+        variant={dialog.variant}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={dialog.onConfirm
+          ? async () => {
+              const action = dialog.onConfirm;
+              closeDialog();
+              await action();
+            }
+          : null}
+      />
     </div>
   );
 }

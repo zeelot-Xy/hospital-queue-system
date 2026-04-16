@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { User, Lock, Phone, Stethoscope, Users } from "lucide-react";
+import { User, Phone, Stethoscope, Users } from "lucide-react";
 import api from "../lib/api";
+import PasswordField from "../components/PasswordField";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -188,23 +189,14 @@ export default function Register() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-4 top-4 w-5 h-5 text-gray-400" />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                className="w-full pl-11 pr-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                placeholder="Create a strong password"
-                required
-              />
-            </div>
-          </div>
+          <PasswordField
+            label="Password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Create a strong password"
+            required
+          />
 
           {formData.role === "doctor" && (
             <>

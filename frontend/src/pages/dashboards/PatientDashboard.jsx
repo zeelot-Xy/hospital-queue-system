@@ -8,6 +8,7 @@ import {
   Stethoscope,
   User,
 } from "lucide-react";
+import AlertDialog from "../../components/AlertDialog";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
 import { disconnectSocket, getSocket } from "../../lib/socket";
@@ -30,6 +31,40 @@ export default function PatientDashboard() {
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [bookingForm, setBookingForm] = useState(initialBookingState);
   const [submittingBooking, setSubmittingBooking] = useState(false);
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    variant: "info",
+    confirmText: "OK",
+    cancelText: undefined,
+    onConfirm: null,
+  });
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const openDialog = ({
+    title,
+    message,
+    variant = "info",
+    confirmText = "OK",
+    cancelText,
+    onConfirm = null,
+  }) => {
+    setDialog({
+      isOpen: true,
+      title,
+      message,
+      variant,
+      confirmText,
+      cancelText,
+      onConfirm,
+    });
+  };
+
+  const closeDialog = () => {
+    setDialog((current) => ({ ...current, isOpen: false, onConfirm: null }));
+  };
 
   const fetchDepartments = async () => {
     try {
@@ -47,7 +82,11 @@ export default function PatientDashboard() {
       setDoctors(res.data);
     } catch (err) {
       console.error(err);
-      alert("Failed to load doctors");
+      openDialog({
+        title: "Doctors Unavailable",
+        message: "We could not load doctors for this department right now.",
+        variant: "error",
+      });
     } finally {
       setLoadingDoctors(false);
     }
@@ -107,7 +146,11 @@ export default function PatientDashboard() {
     e.preventDefault();
 
     if (!selectedDept || !bookingForm.doctor_id) {
-      alert("Please select a department and doctor");
+      openDialog({
+        title: "Complete Your Selection",
+        message: "Please choose both a department and a doctor before booking.",
+        variant: "warning",
+      });
       return;
     }
 
@@ -120,33 +163,56 @@ export default function PatientDashboard() {
         appointment_time: `${bookingForm.appointment_time}:00`,
       });
 
-      alert("Appointment booked successfully");
+      openDialog({
+        title: "Appointment Booked",
+        message: "Your appointment has been scheduled successfully.",
+        variant: "success",
+      });
       setBookingForm(initialBookingState);
       fetchMyAppointments();
       setActiveTab("appointments");
     } catch (err) {
-      alert(err.response?.data?.message || "Booking failed. Please try again.");
+      openDialog({
+        title: "Booking Failed",
+        message: err.response?.data?.message || "Booking failed. Please try again.",
+        variant: "error",
+      });
     } finally {
       setSubmittingBooking(false);
     }
   };
 
   const handleMarkArrived = async (appointment) => {
-    if (!window.confirm(`Mark as arrived for ${appointment.appointment_date}?`)) {
-      return;
-    }
-
-    try {
-      await api.post("/queue/arrived", {
-        appointment_id: appointment.id,
-      });
-      fetchMyAppointments();
-      fetchQueueStatus();
-      setActiveTab("queue");
-      alert("You have successfully joined the queue");
-    } catch (err) {
-      alert(err.response?.data?.message || "Cannot mark as arrived at this time.");
-    }
+    openDialog({
+      title: "Confirm Arrival",
+      message: `Mark yourself as arrived for ${appointment.appointment_date}? This will place you into the live queue.`,
+      variant: "info",
+      confirmText: "Yes, Join Queue",
+      cancelText: "Not Yet",
+      onConfirm: async () => {
+        try {
+          await api.post("/queue/arrived", {
+            appointment_id: appointment.id,
+          });
+          fetchMyAppointments();
+          fetchQueueStatus();
+          setActiveTab("queue");
+          openDialog({
+            title: "Queue Joined",
+            message: "You have successfully joined the queue.",
+            variant: "success",
+          });
+        } catch (err) {
+          openDialog({
+            title: "Could Not Join Queue",
+            message:
+              err.response?.data?.message ||
+              "Cannot mark as arrived at this time.",
+            variant: "error",
+          });
+        }
+      },
+    });
   };
 
   const handleLogout = () => {
@@ -277,37 +343,50 @@ export default function PatientDashboard() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Appointment Date
                       </label>
-                      <input
-                        type="date"
-                        min={new Date().toISOString().split("T")[0]}
-                        value={bookingForm.appointment_date}
-                        onChange={(e) =>
-                          setBookingForm((current) => ({
-                            ...current,
-                            appointment_date: e.target.value,
-                          }))
-                        }
-                        className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                        required
-                      />
+                      <div className="relative">
+                        <Calendar className="absolute left-4 top-4 w-5 h-5 text-teal-500" />
+                        <input
+                          type="date"
+                          min={today}
+                          value={bookingForm.appointment_date}
+                          onChange={(e) =>
+                            setBookingForm((current) => ({
+                              ...current,
+                              appointment_date: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-12 pr-4 py-3.5 border border-gray-300 bg-slate-50 rounded-2xl focus:outline-none focus:border-teal-600 focus:bg-white transition-all"
+                          required
+                        />
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Choose your preferred consultation date from today onward.
+                      </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Appointment Time
                       </label>
-                      <input
-                        type="time"
-                        value={bookingForm.appointment_time}
-                        onChange={(e) =>
-                          setBookingForm((current) => ({
-                            ...current,
-                            appointment_time: e.target.value,
-                          }))
-                        }
-                        className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                        required
-                      />
+                      <div className="relative">
+                        <Clock3 className="absolute left-4 top-4 w-5 h-5 text-teal-500" />
+                        <input
+                          type="time"
+                          step="900"
+                          value={bookingForm.appointment_time}
+                          onChange={(e) =>
+                            setBookingForm((current) => ({
+                              ...current,
+                              appointment_time: e.target.value,
+                            }))
+                          }
+                          className="w-full pl-12 pr-4 py-3.5 border border-gray-300 bg-slate-50 rounded-2xl focus:outline-none focus:border-teal-600 focus:bg-white transition-all"
+                          required
+                        />
+                      </div>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Time selections use 15-minute intervals for cleaner scheduling.
+                      </p>
                     </div>
 
                     <div className="md:col-span-2">
@@ -435,6 +514,23 @@ export default function PatientDashboard() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        isOpen={dialog.isOpen}
+        onClose={closeDialog}
+        title={dialog.title}
+        message={dialog.message}
+        variant={dialog.variant}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={dialog.onConfirm
+          ? async () => {
+              const action = dialog.onConfirm;
+              closeDialog();
+              await action();
+            }
+          : null}
+      />
     </div>
   );
 }
