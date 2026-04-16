@@ -490,23 +490,23 @@ export default function StaffDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-teal-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
             <Building className="h-10 w-10 text-teal-600 sm:h-12 sm:w-12" />
             <div>
-              <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
+              <h1 className="text-2xl font-bold text-teal-900 sm:text-4xl">
                 Staff Operations
               </h1>
-              <p className="text-teal-600 mt-1">
+              <p className="mt-1 text-sm text-teal-600 sm:text-base">
                 Manage the queue, departments, and doctor assignments
               </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="rounded-2xl bg-red-600 px-6 py-3 font-medium text-white transition-all hover:bg-red-700">
+            className="w-full rounded-2xl bg-red-600 px-6 py-3 font-medium text-white transition-all hover:bg-red-700 sm:w-auto">
             Logout
           </button>
         </div>
@@ -540,7 +540,7 @@ export default function StaffDashboard() {
         ) : (
           <>
             {activeTab === "queue" && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 <NotificationPanel
                   notifications={notifications}
                   title="Staff Notifications"
@@ -548,10 +548,10 @@ export default function StaffDashboard() {
                 />
 
                 <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-                  <div className="medical-card p-8">
-                    <div className="flex items-center justify-between gap-4 mb-6">
+                  <div className="medical-card p-5 sm:p-8">
+                    <div className="mb-6 flex items-start justify-between gap-4">
                       <div>
-                        <h2 className="text-2xl font-semibold">Doctor Alerts</h2>
+                        <h2 className="text-xl font-semibold sm:text-2xl">Doctor Alerts</h2>
                         <p className="text-sm text-gray-500 mt-1">
                           Pending requests from doctors to send the next patient in
                         </p>
@@ -569,7 +569,7 @@ export default function StaffDashboard() {
                           <div
                             key={queue.id}
                             className="rounded-3xl border border-amber-200 bg-amber-50 p-5">
-                            <p className="font-semibold text-lg text-amber-900">
+                            <p className="text-base font-semibold text-amber-900 sm:text-lg">
                               Dr. {queue.Doctor?.User?.full_name} called Queue #{queue.queue_number}
                             </p>
                             <p className="text-amber-800 mt-1">
@@ -577,7 +577,7 @@ export default function StaffDashboard() {
                             </p>
                             <button
                               onClick={() => handleConfirmAdmit(queue.id)}
-                              className="mt-4 inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-5 py-3 rounded-2xl font-medium">
+                              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-medium text-white hover:bg-teal-700 sm:w-auto sm:justify-start">
                               <CheckCircle2 size={18} /> Confirm Patient Sent In
                             </button>
                           </div>
@@ -586,10 +586,10 @@ export default function StaffDashboard() {
                     )}
                   </div>
 
-                  <div className="medical-card p-8">
-                    <div className="flex items-center justify-between gap-4 mb-6">
+                  <div className="medical-card p-5 sm:p-8">
+                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <h2 className="text-2xl font-semibold">Live Queue Board</h2>
+                        <h2 className="text-xl font-semibold sm:text-2xl">Live Queue Board</h2>
                         <p className="text-sm text-gray-500 mt-1">
                           Real-time view of all active patient flow
                         </p>
@@ -597,7 +597,7 @@ export default function StaffDashboard() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => setShowWalkInModal(true)}
-                          className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 py-3 text-sm font-medium text-white hover:bg-teal-700 sm:w-auto sm:justify-start sm:py-2">
                           <Plus size={16} /> Add Walk-in
                         </button>
                       </div>
@@ -612,7 +612,7 @@ export default function StaffDashboard() {
                         {queues.map((queue) => (
                           <div
                             key={queue.id}
-                            className="rounded-3xl border border-gray-200 p-5 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
+                            className="flex flex-col gap-5 rounded-3xl border border-gray-200 p-5 xl:flex-row xl:items-center xl:justify-between">
                             <div>
                               <p className="font-semibold text-lg">
                                 Queue #{queue.queue_number}: {queue.Patient?.full_name}
@@ -627,7 +627,7 @@ export default function StaffDashboard() {
                               <p className="mt-2 text-xs text-gray-500">
                                 Waiting: {queue.waiting_duration_minutes || 0} mins
                                 {queue.status === "called"
-                                  ? ` • Called for ${queue.called_duration_minutes || 0} mins`
+                                  ? ` | Called for ${queue.called_duration_minutes || 0} mins`
                                   : ""}
                               </p>
                               {queue.attention_state !== "normal" && (
@@ -640,9 +640,9 @@ export default function StaffDashboard() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-3 flex-wrap">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                               <span
-                                className={`px-4 py-2 rounded-full text-sm font-medium ${
+                                className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-medium ${
                                   queueStatusStyles[queue.status]
                                 }`}>
                                 {formatQueueStatus(queue.status)}
@@ -651,12 +651,12 @@ export default function StaffDashboard() {
                                 <>
                                   <button
                                     onClick={() => handleConfirmAdmit(queue.id)}
-                                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
+                                    className="w-full rounded-2xl bg-teal-600 px-4 py-3 text-sm font-medium text-white hover:bg-teal-700 sm:w-auto sm:py-2">
                                     Confirm Admit
                                   </button>
                                   <button
                                     onClick={() => handleReturnToWaiting(queue.id)}
-                                    className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
+                                    className="w-full rounded-2xl bg-slate-600 px-4 py-3 text-sm font-medium text-white hover:bg-slate-700 sm:w-auto sm:py-2">
                                     Return To Waiting
                                   </button>
                                 </>
@@ -664,14 +664,14 @@ export default function StaffDashboard() {
                               {["waiting", "called", "admitted"].includes(queue.status) && (
                                 <button
                                   onClick={() => openTransferModal(queue)}
-                                  className="bg-white border border-teal-200 text-teal-700 px-4 py-2 rounded-2xl text-sm font-medium hover:bg-teal-50">
+                                  className="w-full rounded-2xl border border-teal-200 bg-white px-4 py-3 text-sm font-medium text-teal-700 hover:bg-teal-50 sm:w-auto sm:py-2">
                                   Transfer
                                 </button>
                               )}
                               {["admitted", "in_consultation"].includes(queue.status) && (
                                 <button
                                   onClick={() => handleComplete(queue.id)}
-                                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
+                                  className="w-full rounded-2xl bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700 sm:w-auto sm:py-2">
                                   Complete
                                 </button>
                               )}
@@ -684,11 +684,11 @@ export default function StaffDashboard() {
                 </div>
 
                 {doctorGroups.length > 0 && (
-                  <div className="medical-card p-8">
+                  <div className="medical-card p-5 sm:p-8">
                     <div className="mb-6 flex items-center gap-3">
                       <BellRing className="text-teal-600" />
                       <div>
-                        <h2 className="text-2xl font-semibold">Waiting Room by Doctor</h2>
+                        <h2 className="text-xl font-semibold sm:text-2xl">Waiting Room by Doctor</h2>
                         <p className="mt-1 text-sm text-gray-500">
                           Queue grouping to help reception coordinate flow faster
                         </p>
@@ -722,17 +722,17 @@ export default function StaffDashboard() {
             )}
 
             {activeTab === "appointments" && (
-              <div className="medical-card p-8">
-                <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="medical-card p-5 sm:p-8">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-2xl font-semibold">Appointments</h2>
+                    <h2 className="text-xl font-semibold sm:text-2xl">Appointments</h2>
                     <p className="mt-1 text-sm text-gray-500">
                       Manage walk-ins, reschedules, and missed appointments
                     </p>
                   </div>
                   <button
                     onClick={() => setShowWalkInModal(true)}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-medium text-white hover:bg-teal-700">
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-medium text-white hover:bg-teal-700 sm:w-auto sm:justify-start">
                     <Plus size={18} /> New Walk-in
                   </button>
                 </div>
@@ -744,7 +744,7 @@ export default function StaffDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {appointments.map((appointment) => (
-                      <div key={appointment.id} className="rounded-3xl border border-gray-200 p-6">
+                      <div key={appointment.id} className="rounded-3xl border border-gray-200 p-5 sm:p-6">
                         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                           <div>
                             <p className="text-lg font-semibold">
@@ -756,24 +756,24 @@ export default function StaffDashboard() {
                             <p className="mt-2 text-sm text-gray-500">
                               {appointment.appointment_date} at{" "}
                               {appointment.appointment_time?.slice(0, 5)}
-                              {appointment.walk_in ? " • Walk-in" : ""}
+                              {appointment.walk_in ? " | Walk-in" : ""}
                             </p>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                             <span
-                              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                              className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-medium ${
                                 queueStatusStyles[appointment.status] || "bg-slate-100 text-slate-700"
                               }`}>
                               {formatQueueStatus(appointment.status)}
                             </span>
                             <button
                               onClick={() => openRescheduleModal(appointment)}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50">
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-3 text-sm font-medium text-teal-700 hover:bg-teal-50 sm:w-auto sm:justify-start sm:py-2">
                               <CalendarClock size={16} /> Reschedule
                             </button>
                             <button
                               onClick={() => handleMarkMissed(appointment.id)}
-                              className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700 sm:w-auto sm:justify-start sm:py-2">
                               <TriangleAlert size={16} /> Mark Missed
                             </button>
                           </div>
@@ -786,19 +786,50 @@ export default function StaffDashboard() {
             )}
 
             {activeTab === "departments" && (
-              <div className="medical-card p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-semibold">
+              <div className="medical-card p-5 sm:p-8">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-xl font-semibold sm:text-2xl">
                     All Departments ({departments.length})
                   </h2>
                   <button
                     onClick={() => openDeptModal()}
-                    className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-2xl font-medium transition-all">
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-6 py-3 font-medium text-white transition-all hover:bg-teal-700 sm:w-auto">
                     <Plus size={20} /> New Department
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="space-y-4 md:hidden">
+                  {departments.map((dept) => (
+                    <div key={dept.id} className="rounded-3xl border border-gray-200 p-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Department #{dept.id}</p>
+                          <p className="mt-1 text-lg font-semibold text-teal-900">{dept.name}</p>
+                        </div>
+                        <span className="rounded-full bg-green-100 px-4 py-1.5 text-sm font-medium text-green-700">
+                          {dept.status}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm text-gray-600">
+                        {dept.description || "No description"}
+                      </p>
+                      <div className="mt-4 flex gap-3">
+                        <button
+                          onClick={() => openDeptModal(dept)}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-3 text-sm font-medium text-teal-700 hover:bg-teal-50">
+                          <Edit2 size={16} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDepartment(dept.id)}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 py-3 text-sm font-medium text-white hover:bg-red-700">
+                          <Trash2 size={16} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b text-left text-gray-600 font-medium">
@@ -845,19 +876,41 @@ export default function StaffDashboard() {
             )}
 
             {activeTab === "doctors" && (
-              <div className="medical-card p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-semibold">
+              <div className="medical-card p-5 sm:p-8">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="text-xl font-semibold sm:text-2xl">
                     All Doctors ({doctors.length})
                   </h2>
                   <button
                     onClick={() => setShowDoctorModal(true)}
-                    className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-2xl font-medium transition-all">
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-6 py-3 font-medium text-white transition-all hover:bg-teal-700 sm:w-auto">
                     <UserRoundPlus size={20} /> Add New Doctor
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="space-y-4 md:hidden">
+                  {doctors.map((doctor) => (
+                    <div key={doctor.id} className="rounded-3xl border border-gray-200 p-5">
+                      <p className="text-lg font-semibold text-teal-900">
+                        {doctor.User?.full_name}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {doctor.Department?.name}
+                      </p>
+                      <p className="mt-3 text-sm text-teal-700">
+                        {doctor.specialization}
+                      </p>
+                      <p className="mt-3 text-sm text-gray-600">
+                        {doctor.User?.email || "No email"}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-600">
+                        {doctor.User?.phone || "No phone"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b text-left text-gray-600 font-medium">
@@ -894,11 +947,11 @@ export default function StaffDashboard() {
 
             {activeTab === "reports" && (
               <div className="space-y-8">
-                <div className="medical-card p-8">
+                <div className="medical-card p-5 sm:p-8">
                   <div className="mb-6 flex items-center gap-3">
                     <FileText className="text-teal-600" />
                     <div>
-                      <h2 className="text-2xl font-semibold">Operational Reports</h2>
+                      <h2 className="text-xl font-semibold sm:text-2xl">Operational Reports</h2>
                       <p className="mt-1 text-sm text-gray-500">
                         Daily operations metrics for staff and admin review
                       </p>
@@ -929,7 +982,7 @@ export default function StaffDashboard() {
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                  <div className="medical-card p-8">
+                  <div className="medical-card p-5 sm:p-8">
                     <h3 className="text-xl font-semibold">Busiest Doctors</h3>
                     <div className="mt-4 space-y-3">
                       {(reports?.busiestDoctors || []).map((item) => (
@@ -945,7 +998,7 @@ export default function StaffDashboard() {
                     </div>
                   </div>
 
-                  <div className="medical-card p-8">
+                  <div className="medical-card p-5 sm:p-8">
                     <h3 className="text-xl font-semibold">Busiest Departments</h3>
                     <div className="mt-4 space-y-3">
                       {(reports?.busiestDepartments || []).map((item) => (
@@ -962,14 +1015,14 @@ export default function StaffDashboard() {
                   </div>
                 </div>
 
-                <div className="medical-card p-8">
+                <div className="medical-card p-5 sm:p-8">
                   <h3 className="text-xl font-semibold">Recent Audit Activity</h3>
                   <div className="mt-4 space-y-3">
                     {auditLogs.map((log) => (
                       <div key={log.id} className="rounded-2xl border border-gray-200 px-4 py-4">
                         <p className="font-semibold text-teal-900">{log.action_type}</p>
                         <p className="mt-1 text-sm text-gray-500">
-                          Actor: {log.Actor?.full_name || "System"} • Target: {log.target_type}
+                          Actor: {log.Actor?.full_name || "System"} | Target: {log.target_type}
                           {log.target_id ? ` #${log.target_id}` : ""}
                         </p>
                       </div>

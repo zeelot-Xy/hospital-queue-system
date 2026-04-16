@@ -447,20 +447,20 @@ export default function DoctorDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-teal-50 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
+            <h1 className="text-2xl font-bold text-teal-900 sm:text-4xl">
               Doctor Dashboard
             </h1>
-            <p className="text-teal-600 mt-1">
+            <p className="mt-1 text-sm text-teal-600 sm:text-base">
               Manage your consultation queue and call the next patient
             </p>
           </div>
           <button
             onClick={handleLogout}
-            className="rounded-2xl bg-red-600 px-6 py-3 text-white hover:bg-red-700">
+            className="w-full rounded-2xl bg-red-600 px-6 py-3 text-white hover:bg-red-700 sm:w-auto">
             <span className="inline-flex items-center gap-2">
               <LogOut size={18} /> Logout
             </span>
@@ -479,7 +479,7 @@ export default function DoctorDashboard() {
             Loading queue data...
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
               <div className="space-y-6">
             <div
@@ -488,13 +488,13 @@ export default function DoctorDashboard() {
                   ? "grid"
                   : "hidden md:grid"
               }`}>
-              <div className="medical-card p-6 sm:p-8">
-                <div className="flex items-start justify-between gap-4">
+              <div className="medical-card p-5 sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-sm uppercase tracking-[0.3em] text-teal-600">
                       Doctor Profile
                     </p>
-                    <h2 className="text-3xl font-bold text-teal-900 mt-2">
+                    <h2 className="mt-2 text-2xl font-bold text-teal-900 sm:text-3xl">
                       Dr. {doctorProfile?.User?.full_name || user.full_name}
                     </h2>
                     <p className="text-gray-600 mt-2">
@@ -503,20 +503,20 @@ export default function DoctorDashboard() {
                       {doctorProfile?.Department?.name || "No department assigned"}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-3">
-                    <div className="rounded-2xl bg-teal-100 p-4">
+                  <div className="flex flex-col gap-3 sm:items-end">
+                    <div className="hidden rounded-2xl bg-teal-100 p-4 sm:block">
                       <Stethoscope className="w-8 h-8 text-teal-700" />
                     </div>
                     <button
                       type="button"
                       onClick={openProfileModal}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:border-teal-400 hover:bg-teal-50 transition-all">
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-3 text-sm font-medium text-teal-700 transition-all hover:border-teal-400 hover:bg-teal-50 sm:w-auto sm:justify-start sm:py-2">
                       <Edit2 size={16} /> Edit Profile
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-8">
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:mt-8 sm:grid-cols-2 sm:gap-4">
                   <div className="rounded-2xl bg-slate-50 p-5">
                     <p className="text-sm text-gray-500">Waiting Patients</p>
                     <p className="text-3xl font-bold mt-2">{waitingPatients.length}</p>
@@ -530,13 +530,13 @@ export default function DoctorDashboard() {
                 </div>
               </div>
 
-              <div className="medical-card p-6 sm:p-8">
-                <div className="flex items-center justify-between gap-4">
+              <div className="medical-card p-5 sm:p-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm uppercase tracking-[0.3em] text-teal-600">
                       Current Consultation
                     </p>
-                    <h2 className="text-2xl font-semibold mt-2">
+                    <h2 className="mt-2 text-xl font-semibold sm:text-2xl">
                       {activeQueue
                         ? activeQueue.Patient?.full_name
                         : "No active patient"}
@@ -551,7 +551,7 @@ export default function DoctorDashboard() {
                       )
                     }
                     disabled={workingAction === "/queue/call-next"}
-                    className="bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white px-5 py-3 rounded-2xl font-semibold">
+                    className="w-full rounded-2xl bg-teal-600 px-5 py-3 font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400 sm:w-auto">
                     Call Next Patient
                   </button>
                 </div>
@@ -559,7 +559,7 @@ export default function DoctorDashboard() {
                 {activeQueue ? (
                   <div className="mt-8 space-y-5">
                     <div className="rounded-2xl border border-gray-200 p-5">
-                      <div className="flex items-center justify-between gap-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm text-gray-500">Queue Number</p>
                           <p className="text-4xl font-bold text-teal-900">
@@ -602,7 +602,7 @@ export default function DoctorDashboard() {
                       <button
                         type="button"
                         onClick={() => openPatientProfileModal(activeQueue)}
-                        className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:border-teal-400 transition-all">
+                        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-700 transition-all hover:border-teal-400 sm:w-auto sm:justify-start sm:py-2">
                         <FileText size={16} /> View Patient Profile
                       </button>
                     </div>
@@ -664,14 +664,14 @@ export default function DoctorDashboard() {
             </div>
 
             <div
-              className={`medical-card p-6 sm:p-8 ${
+              className={`medical-card p-5 sm:p-8 ${
                 activeMobileSection === "availability"
                   ? "block"
                   : "hidden md:block"
               }`}>
-              <div className="mb-6 flex items-center justify-between gap-4">
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold">Weekly Availability</h2>
+                  <h2 className="text-xl font-semibold sm:text-2xl">Weekly Availability</h2>
                   <p className="mt-1 text-sm text-gray-500">
                     Patients can only book within these windows
                   </p>
@@ -679,7 +679,7 @@ export default function DoctorDashboard() {
                 <button
                   type="button"
                   onClick={addAvailabilityRow}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 py-3 text-sm font-medium text-white hover:bg-teal-700 sm:w-auto sm:justify-start sm:py-2">
                   <Plus size={16} /> Add Window
                 </button>
               </div>
@@ -693,57 +693,92 @@ export default function DoctorDashboard() {
                   {availabilityRows.map((row, index) => (
                     <div
                       key={`${row.id || "new"}-${index}`}
-                      className="grid gap-3 rounded-3xl border border-gray-200 p-5 md:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_auto]">
-                      <select
-                        value={row.day_of_week}
-                        onChange={(e) =>
-                          updateAvailabilityRow(index, "day_of_week", Number(e.target.value))
-                        }
-                        className="rounded-2xl border border-gray-300 px-4 py-3">
-                        {daysOfWeek.map((day, dayIndex) => (
-                          <option key={day} value={dayIndex}>
-                            {day}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="time"
-                        value={String(row.start_time).slice(0, 5)}
-                        onChange={(e) => updateAvailabilityRow(index, "start_time", e.target.value)}
-                        className="rounded-2xl border border-gray-300 px-4 py-3"
-                      />
-                      <input
-                        type="time"
-                        value={String(row.end_time).slice(0, 5)}
-                        onChange={(e) => updateAvailabilityRow(index, "end_time", e.target.value)}
-                        className="rounded-2xl border border-gray-300 px-4 py-3"
-                      />
-                      <input
-                        type="number"
-                        min="5"
-                        step="5"
-                        value={row.slot_minutes}
-                        onChange={(e) =>
-                          updateAvailabilityRow(index, "slot_minutes", e.target.value)
-                        }
-                        className="rounded-2xl border border-gray-300 px-4 py-3"
-                      />
-                      <label className="flex items-center gap-2 rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-700">
-                        <input
-                          type="checkbox"
-                          checked={row.is_active !== false}
+                      className="grid gap-3 rounded-3xl border border-gray-200 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_auto]">
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          Day
+                        </label>
+                        <select
+                          value={row.day_of_week}
                           onChange={(e) =>
-                            updateAvailabilityRow(index, "is_active", e.target.checked)
+                            updateAvailabilityRow(index, "day_of_week", Number(e.target.value))
                           }
+                          className="w-full rounded-2xl border border-gray-300 px-4 py-3">
+                          {daysOfWeek.map((day, dayIndex) => (
+                            <option key={day} value={dayIndex}>
+                              {day}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          Start
+                        </label>
+                        <input
+                          type="time"
+                          value={String(row.start_time).slice(0, 5)}
+                          onChange={(e) => updateAvailabilityRow(index, "start_time", e.target.value)}
+                          className="w-full rounded-2xl border border-gray-300 px-4 py-3"
                         />
-                        Active
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => removeAvailabilityRow(index)}
-                        className="rounded-2xl bg-red-50 px-4 py-3 text-red-600 hover:bg-red-100">
-                        <Trash2 size={18} />
-                      </button>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          End
+                        </label>
+                        <input
+                          type="time"
+                          value={String(row.end_time).slice(0, 5)}
+                          onChange={(e) => updateAvailabilityRow(index, "end_time", e.target.value)}
+                          className="w-full rounded-2xl border border-gray-300 px-4 py-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          Slot Minutes
+                        </label>
+                        <input
+                          type="number"
+                          min="5"
+                          step="5"
+                          value={row.slot_minutes}
+                          onChange={(e) =>
+                            updateAvailabilityRow(index, "slot_minutes", e.target.value)
+                          }
+                          className="w-full rounded-2xl border border-gray-300 px-4 py-3"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          Status
+                        </label>
+                        <label className="flex h-full items-center gap-2 rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={row.is_active !== false}
+                            onChange={(e) =>
+                              updateAvailabilityRow(index, "is_active", e.target.checked)
+                            }
+                          />
+                          Active
+                        </label>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 xl:hidden">
+                          Remove
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeAvailabilityRow(index)}
+                          className="w-full rounded-2xl bg-red-50 px-4 py-3 text-red-600 hover:bg-red-100">
+                          <span className="inline-flex items-center gap-2 xl:hidden">
+                            <Trash2 size={16} /> Remove Window
+                          </span>
+                          <span className="hidden xl:inline">
+                            <Trash2 size={18} />
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -753,18 +788,18 @@ export default function DoctorDashboard() {
                 type="button"
                 onClick={handleSaveAvailability}
                 disabled={savingAvailability}
-                className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400">
+                className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400 sm:w-auto sm:justify-start">
                 <Save size={18} />
                 {savingAvailability ? "Saving..." : "Save Availability"}
               </button>
             </div>
 
             <div
-              className={`medical-card p-6 sm:p-8 ${
+              className={`medical-card p-5 sm:p-8 ${
                 activeMobileSection === "queue" ? "block" : "hidden md:block"
               }`}>
-              <div className="flex items-center justify-between gap-4 mb-6">
-                <h2 className="text-2xl font-semibold">Queue Overview</h2>
+              <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h2 className="text-xl font-semibold sm:text-2xl">Queue Overview</h2>
                 <p className="text-sm text-gray-500">
                   Ordered automatically by queue number
                 </p>
@@ -779,7 +814,7 @@ export default function DoctorDashboard() {
                   {queue.map((item) => (
                     <div
                       key={item.id}
-                      className="rounded-3xl border border-gray-200 p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+                      className="flex flex-col gap-5 rounded-3xl border border-gray-200 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
                       <div className="flex items-start gap-4">
                         <div className="w-14 h-14 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center text-xl font-bold">
                           {item.queue_number}
@@ -808,9 +843,9 @@ export default function DoctorDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                         <span
-                          className={`px-4 py-2 rounded-full text-sm font-medium ${
+                          className={`inline-flex w-fit rounded-full px-4 py-2 text-sm font-medium ${
                             queueStatusStyles[item.status]
                           }`}>
                           {formatQueueStatus(item.status)}
@@ -818,7 +853,7 @@ export default function DoctorDashboard() {
                         <button
                           type="button"
                           onClick={() => openPatientProfileModal(item)}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition-all">
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-3 text-sm font-medium text-teal-700 transition-all hover:bg-teal-50 sm:w-auto sm:justify-start sm:py-2">
                           <FileText size={16} /> View Patient Profile
                         </button>
                         {item.status === "waiting" && (
@@ -844,7 +879,7 @@ export default function DoctorDashboard() {
                                 workingAction === "/queue/call-again" ||
                                 !item.can_call_again
                               }
-                              className="inline-flex items-center gap-2 rounded-2xl bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-400">
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-700 px-4 py-3 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-400 sm:w-auto sm:justify-start sm:py-2">
                               <Repeat size={16} /> {getCallAgainLabel(item)}
                             </button>
                           </>

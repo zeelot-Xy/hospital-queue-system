@@ -12,28 +12,28 @@ export default function DashboardSectionMenu({
     sections.find((section) => section.value === activeSection) || sections[0];
 
   return (
-    <div className="mb-6 md:hidden">
+    <div className="sticky top-3 z-30 mb-5 md:hidden">
       <div className="relative">
         <button
           type="button"
           onClick={() => setIsOpen((current) => !current)}
-          className="flex w-full items-center justify-between rounded-3xl border border-teal-200 bg-white px-5 py-4 text-left shadow-sm transition-all hover:border-teal-400"
+          className="flex w-full items-center justify-between rounded-3xl border border-teal-200 bg-white/95 px-4 py-3.5 text-left shadow-sm backdrop-blur transition-all hover:border-teal-400"
         >
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-teal-600">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-600">
               {title}
             </p>
-            <p className="mt-1 text-lg font-semibold text-teal-900">
+            <p className="mt-1 text-base font-semibold text-teal-900 sm:text-lg">
               {activeItem?.label}
             </p>
           </div>
-          <span className="rounded-2xl bg-teal-50 p-3 text-teal-700">
+          <span className="rounded-2xl bg-teal-50 p-2.5 text-teal-700">
             {isOpen ? <X size={18} /> : <Menu size={18} />}
           </span>
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-20 rounded-3xl border border-gray-200 bg-white p-3 shadow-xl">
+          <div className="absolute left-0 right-0 top-[calc(100%+0.75rem)] z-20 max-h-[70vh] overflow-y-auto rounded-3xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur">
             <div className="space-y-2">
               {sections.map((section, index) => (
                 <button

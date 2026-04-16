@@ -422,20 +422,20 @@ export default function PatientDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
+    <div className="min-h-screen bg-teal-50 p-3 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
+            <h1 className="text-2xl font-bold text-teal-900 sm:text-4xl">
               Welcome, {user.full_name}
             </h1>
-            <p className="text-teal-600 mt-1">
+            <p className="mt-1 text-sm text-teal-600 sm:text-base">
               Book appointments and follow your queue status in real time
             </p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700 md:w-auto">
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700 sm:w-auto md:w-auto">
             <LogOut size={20} /> Logout
           </button>
         </div>
@@ -454,14 +454,14 @@ export default function PatientDashboard() {
         {renderDesktopTabs()}
 
         {activeTab === "book" && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <NotificationPanel
               notifications={notifications}
               title="Patient Notifications"
               emptyMessage="No patient notifications right now."
             />
             {profileIsIncomplete && (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5 text-amber-900">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 sm:px-6 sm:py-5">
                 <p className="font-semibold">Complete your patient profile</p>
                 <p className="text-sm mt-1">
                   Adding your blood group, date of birth, allergies, and chronic conditions helps doctors prepare faster before your consultation.
@@ -469,22 +469,22 @@ export default function PatientDashboard() {
               </div>
             )}
 
-            <div className="medical-card p-6 sm:p-8">
-              <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
+            <div className="medical-card p-5 sm:p-8">
+              <h2 className="mb-5 flex items-center gap-3 text-xl font-semibold sm:mb-6 sm:text-2xl">
                 <Calendar className="text-teal-600" /> Select Department
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
                 {departments.map((dept) => (
                   <button
                     key={dept.id}
                     type="button"
                     onClick={() => handleDeptSelect(dept)}
-                    className={`text-left border-2 rounded-3xl p-6 transition-all hover:shadow-md ${
+                    className={`text-left border-2 rounded-3xl p-5 transition-all hover:shadow-md sm:p-6 ${
                       selectedDept?.id === dept.id
                         ? "border-teal-600 bg-teal-50"
                         : "border-gray-200 hover:border-teal-500"
                     }`}>
-                    <h3 className="font-semibold text-xl text-teal-900">
+                    <h3 className="text-lg font-semibold text-teal-900 sm:text-xl">
                       {dept.name}
                     </h3>
                     <p className="text-gray-600 mt-3">
@@ -496,8 +496,8 @@ export default function PatientDashboard() {
             </div>
 
             {selectedDept && (
-              <div className="medical-card p-6 sm:p-8">
-                <h2 className="text-2xl font-semibold mb-6">
+              <div className="medical-card p-5 sm:p-8">
+                <h2 className="mb-5 text-xl font-semibold sm:mb-6 sm:text-2xl">
                   Book in <span className="text-teal-600">{selectedDept.name}</span>
                 </h2>
 
@@ -508,7 +508,7 @@ export default function PatientDashboard() {
                     Choose a date to see doctors with open slots in this department.
                   </p>
                 ) : (
-                  <form onSubmit={handleBookAppointment} className="grid gap-6 md:grid-cols-2">
+                  <form onSubmit={handleBookAppointment} className="grid gap-5 md:grid-cols-2 md:gap-6">
                     <div className="md:col-span-2">
                       <label className="mb-2 block text-sm font-medium text-gray-700">
                         Appointment Date
@@ -553,17 +553,17 @@ export default function PatientDashboard() {
                               doctor_id: String(doctor.id),
                             }))
                           }
-                          className={`border rounded-3xl p-5 sm:p-6 text-left transition-all ${
+                        className={`border rounded-3xl p-4 text-left transition-all sm:p-6 ${
                             bookingForm.doctor_id === String(doctor.id)
                               ? "border-teal-600 bg-teal-50 shadow"
                               : "border-gray-200 hover:border-teal-500"
                           }`}>
-                          <div className="flex items-center gap-4 mb-3">
-                            <div className="w-14 h-14 bg-teal-100 rounded-2xl flex items-center justify-center">
+                          <div className="mb-3 flex items-center gap-3 sm:gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 sm:h-14 sm:w-14">
                               <User className="w-8 h-8 text-teal-600" />
                             </div>
                             <div>
-                              <p className="font-semibold text-lg">
+                              <p className="text-base font-semibold sm:text-lg">
                                 Dr. {doctor.User.full_name}
                               </p>
                               <p className="text-teal-700">
@@ -638,8 +638,8 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "appointments" && (
-          <div className="medical-card p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold mb-6">My Appointments</h2>
+          <div className="medical-card p-5 sm:p-8">
+            <h2 className="mb-5 text-xl font-semibold sm:mb-6 sm:text-2xl">My Appointments</h2>
 
             {myAppointments.length === 0 ? (
               <p className="text-center py-16 text-gray-500">
@@ -650,7 +650,7 @@ export default function PatientDashboard() {
                 {myAppointments.map((appointment) => (
                   <div
                     key={appointment.id}
-                    className="border border-gray-200 rounded-3xl p-5 sm:p-6 flex flex-col gap-6 md:flex-row md:justify-between">
+                    className="flex flex-col gap-5 rounded-3xl border border-gray-200 p-5 sm:p-6 md:flex-row md:justify-between">
                     <div>
                       <p className="font-semibold text-lg">
                         Dr. {appointment.Doctor?.User?.full_name}
@@ -666,12 +666,12 @@ export default function PatientDashboard() {
                       {appointment.status === "booked" && (
                         <button
                           onClick={() => handleMarkArrived(appointment)}
-                          className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-2xl font-medium text-sm">
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-8 py-3 text-sm font-medium text-white hover:bg-teal-700 md:w-auto">
                           <CheckCircle size={18} /> I Have Arrived
                         </button>
                       )}
                       <span
-                        className={`px-6 py-2 rounded-full text-sm font-medium ${
+                        className={`inline-flex w-fit rounded-full px-6 py-2 text-sm font-medium ${
                           queueStatusStyles[appointment.status] || "bg-gray-100 text-gray-700"
                         }`}>
                         {formatQueueStatus(appointment.status)}
@@ -687,33 +687,33 @@ export default function PatientDashboard() {
         {activeTab === "queue" && (
           <div className="space-y-6">
             {profileIsIncomplete && (
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5 text-amber-900">
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-900 sm:px-6 sm:py-5">
                 <p className="font-semibold">Complete your medical profile</p>
                 <p className="mt-1 text-sm">
                   Staff can coordinate your queue, but doctors prepare faster when your blood group, date of birth, allergies, and chronic conditions are complete.
                 </p>
               </div>
             )}
-          <div className="medical-card p-6 sm:p-8">
-            <h2 className="text-2xl font-semibold mb-6">My Queue Status</h2>
+          <div className="medical-card p-5 sm:p-8">
+            <h2 className="mb-5 text-xl font-semibold sm:mb-6 sm:text-2xl">My Queue Status</h2>
 
             {!currentQueue ? (
               <p className="text-center py-16 text-gray-500">
                 You are not currently in an active queue.
               </p>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="rounded-3xl bg-teal-600 p-6 text-white sm:p-8">
+              <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+                <div className="rounded-3xl bg-teal-600 p-5 text-white sm:p-8">
                   <p className="text-sm uppercase tracking-[0.3em] opacity-80">
                     Queue Number
                   </p>
-                  <p className="text-6xl font-bold mt-3">{currentQueue.queue_number}</p>
-                  <span className="inline-flex mt-6 px-4 py-2 rounded-full bg-white/15 text-sm font-medium">
+                  <p className="mt-3 text-5xl font-bold sm:text-6xl">{currentQueue.queue_number}</p>
+                  <span className="mt-5 inline-flex w-fit rounded-full bg-white/15 px-4 py-2 text-sm font-medium sm:mt-6">
                     {formatQueueStatus(currentQueue.status)}
                   </span>
                 </div>
 
-                <div className="space-y-5 rounded-3xl border border-gray-200 p-6 sm:p-8">
+                <div className="space-y-5 rounded-3xl border border-gray-200 p-5 sm:p-8">
                   <div className="flex items-start gap-3">
                     <Stethoscope className="text-teal-600 mt-1" />
                     <div>
@@ -767,7 +767,7 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "history" && (
-          <div className="medical-card p-6 sm:p-8">
+          <div className="medical-card p-5 sm:p-8">
             <div className="mb-6 flex items-center gap-3">
               <FileText className="text-teal-600" />
               <div>
@@ -809,7 +809,7 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "profile" && (
-          <div className="medical-card space-y-8 p-6 sm:p-8">
+          <div className="medical-card space-y-6 p-5 sm:space-y-8 sm:p-8">
             <div>
               <h2 className="text-2xl font-semibold">My Medical Profile</h2>
               <p className="text-gray-600 mt-2">
@@ -817,7 +817,7 @@ export default function PatientDashboard() {
               </p>
             </div>
 
-            <form onSubmit={handleProfileSave} className="grid gap-6 md:grid-cols-2">
+            <form onSubmit={handleProfileSave} className="grid gap-5 md:grid-cols-2 md:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Blood Group
@@ -840,7 +840,7 @@ export default function PatientDashboard() {
                 </select>
               </div>
 
-              <div className="rounded-3xl bg-slate-50 px-5 py-4 text-sm text-gray-700 md:col-span-1">
+              <div className="rounded-3xl bg-slate-50 px-5 py-4 text-sm text-gray-700 md:col-span-2">
                 Your doctor can view this profile while you are in their queue. Only doctors can see your consultation notes.
               </div>
 
@@ -913,7 +913,7 @@ export default function PatientDashboard() {
                 </button>
               </div>
 
-              <div className="md:col-span-2 rounded-3xl border border-red-200 bg-red-50 px-6 py-5">
+              <div className="md:col-span-2 rounded-3xl border border-red-200 bg-red-50 px-5 py-5 sm:px-6">
                 <p className="text-sm font-semibold text-red-800">Danger Zone</p>
                 <p className="mt-2 text-sm text-red-700">
                   Deleting your account will permanently remove your patient
@@ -923,7 +923,7 @@ export default function PatientDashboard() {
                   type="button"
                   onClick={handleDeleteAccount}
                   disabled={deletingAccount || savingProfile}
-                  className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:bg-red-400">
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:bg-red-400 sm:w-auto">
                   <Trash2 size={16} />
                   {deletingAccount ? "Deleting Account..." : "Delete Account"}
                 </button>
