@@ -12,9 +12,9 @@ const {
 
 const router = express.Router();
 
-// Allow all authenticated users to view departments.
+// Department listing is public so registration can fetch department options.
 // Only staff/admin can create, update, or delete.
-router.get("/", authenticateToken, getAllDepartments);
+router.get("/", getAllDepartments);
 router.post(
   "/",
   authenticateToken,
