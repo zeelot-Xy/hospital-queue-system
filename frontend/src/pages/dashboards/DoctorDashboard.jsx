@@ -3,20 +3,45 @@ import { useNavigate } from "react-router-dom";
 import {
   Activity,
   ArrowRight,
+  BellRing,
+  CalendarClock,
   CheckCircle2,
   Clock3,
   Edit2,
   FileText,
   LogOut,
   PlayCircle,
+  Plus,
+  Repeat,
+  Save,
   Stethoscope,
   Trash2,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
 import Modal from "../../components/Modal";
+import NotificationPanel from "../../components/NotificationPanel";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
 import { disconnectSocket, getSocket } from "../../lib/socket";
+
+const daysOfWeek = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+const emptyConsultationForm = {
+  presenting_complaint: "",
+  findings: "",
+  diagnosis: "",
+  treatment_plan: "",
+  follow_up_advice: "",
+  note_summary: "",
+};
 
 export default function DoctorDashboard() {
   const navigate = useNavigate();
@@ -25,6 +50,8 @@ export default function DoctorDashboard() {
   const [queue, setQueue] = useState([]);
   const [activeQueue, setActiveQueue] = useState(null);
   const [departments, setDepartments] = useState([]);
+  const [availabilityRows, setAvailabilityRows] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workingAction, setWorkingAction] = useState("");
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -33,9 +60,11 @@ export default function DoctorDashboard() {
   const [profileError, setProfileError] = useState("");
   const [showPatientProfileModal, setShowPatientProfileModal] = useState(false);
   const [loadingPatientProfile, setLoadingPatientProfile] = useState(false);
-  const [savingPatientNotes, setSavingPatientNotes] = useState(false);
+  const [savingConsultationRecord, setSavingConsultationRecord] = useState(false);
+  const [savingAvailability, setSavingAvailability] = useState(false);
   const [patientProfileRecord, setPatientProfileRecord] = useState(null);
-  const [patientNotesDraft, setPatientNotesDraft] = useState("");
+  const [selectedQueueItem, setSelectedQueueItem] = useState(null);
+  const [consultationForm, setConsultationForm] = useState(emptyConsultationForm);
   const [profileForm, setProfileForm] = useState({
     full_name: "",
     phone: "",
@@ -71,10 +100,13 @@ export default function DoctorDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const [doctorRes, queueRes, departmentRes] = await Promise.all([
+      const [doctorRes, queueRes, departmentRes, availabilityRes, notificationsRes] =
+        await Promise.all([
         api.get("/doctors/me"),
         api.get("/queue/doctor/me"),
         api.get("/departments"),
+        api.get("/availability/me"),
+        api.get("/notifications"),
       ]);
 
       setDoctorProfile(doctorRes.data);
@@ -83,6 +115,8 @@ export default function DoctorDashboard() {
       setDepartments(
         departmentRes.data.filter((department) => department.status !== "inactive"),
       );
+      setAvailabilityRows(availabilityRes.data.rows || []);
+      setNotifications(notificationsRes.data.notifications || []);
     } catch (err) {
       console.error(err);
       showDialog(
@@ -124,10 +158,17 @@ export default function DoctorDashboard() {
     }
 
     const refresh = () => fetchDashboard();
+    const onNotification = ({ notification }) => {
+      if (notification) {
+        setNotifications((current) => [notification, ...current].slice(0, 20));
+      }
+    };
     socket.on("queue:refresh", refresh);
+    socket.on("notification:new", onNotification);
 
     return () => {
       socket.off("queue:refresh", refresh);
+      socket.off("notification:new", onNotification);
     };
   }, []);
 
@@ -189,14 +230,31 @@ export default function DoctorDashboard() {
     }
   };
 
-  const openPatientProfileModal = async (patientId) => {
+  const openPatientProfileModal = async (queueItem) => {
     setLoadingPatientProfile(true);
     setShowPatientProfileModal(true);
+    setSelectedQueueItem(queueItem);
 
     try {
-      const res = await api.get(`/patient-profile/patient/${patientId}`);
-      setPatientProfileRecord(res.data);
-      setPatientNotesDraft(res.data.profile?.last_visit_notes || "");
+      const [profileRes, consultationRes] = await Promise.all([
+        api.get(`/patient-profile/patient/${queueItem.Patient?.id}`),
+        api.get(`/consultations/queue/${queueItem.id}`),
+      ]);
+      setPatientProfileRecord(profileRes.data);
+      setConsultationForm(
+        consultationRes.data.record
+          ? {
+              presenting_complaint:
+                consultationRes.data.record.presenting_complaint || "",
+              findings: consultationRes.data.record.findings || "",
+              diagnosis: consultationRes.data.record.diagnosis || "",
+              treatment_plan: consultationRes.data.record.treatment_plan || "",
+              follow_up_advice:
+                consultationRes.data.record.follow_up_advice || "",
+              note_summary: consultationRes.data.record.note_summary || "",
+            }
+          : emptyConsultationForm,
+      );
     } catch (err) {
       setShowPatientProfileModal(false);
       showDialog(
@@ -209,34 +267,32 @@ export default function DoctorDashboard() {
     }
   };
 
-  const handleSavePatientNotes = async (patientId) => {
-    setSavingPatientNotes(true);
+  const handleSaveConsultationRecord = async () => {
+    if (!selectedQueueItem) {
+      return;
+    }
+
+    setSavingConsultationRecord(true);
 
     try {
-      const res = await api.put(`/patient-profile/patient/${patientId}/notes`, {
-        last_visit_notes: patientNotesDraft,
-      });
-
-      setPatientProfileRecord((current) => ({
-        ...current,
-        profile: {
-          ...current.profile,
-          last_visit_notes: res.data.last_visit_notes || "",
-        },
-      }));
+      await api.put(`/consultations/queue/${selectedQueueItem.id}`, consultationForm);
+      const refreshed = await api.get(
+        `/patient-profile/patient/${selectedQueueItem.Patient?.id}`,
+      );
+      setPatientProfileRecord(refreshed.data);
       showDialog(
-        "Visit Notes Saved",
-        "The patient's latest consultation notes have been updated.",
+        "Consultation Record Saved",
+        "The structured consultation record has been updated.",
         "success",
       );
     } catch (err) {
       showDialog(
-        "Notes Save Failed",
-        err.response?.data?.message || "Could not save visit notes.",
+        "Save Failed",
+        err.response?.data?.message || "Could not save the consultation record.",
         "error",
       );
     } finally {
-      setSavingPatientNotes(false);
+      setSavingConsultationRecord(false);
     }
   };
 
@@ -277,6 +333,74 @@ export default function DoctorDashboard() {
 
   const waitingPatients = queue.filter((item) => item.status === "waiting");
 
+  const updateAvailabilityRow = (index, field, value) => {
+    setAvailabilityRows((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, [field]: value } : row,
+      ),
+    );
+  };
+
+  const addAvailabilityRow = () => {
+    setAvailabilityRows((current) => [
+      ...current,
+      {
+        day_of_week: 1,
+        start_time: "09:00",
+        end_time: "17:00",
+        slot_minutes: 30,
+        is_active: true,
+      },
+    ]);
+  };
+
+  const removeAvailabilityRow = (index) => {
+    setAvailabilityRows((current) => current.filter((_, rowIndex) => rowIndex !== index));
+  };
+
+  const handleSaveAvailability = async () => {
+    setSavingAvailability(true);
+    try {
+      const res = await api.put("/availability/me", {
+        rows: availabilityRows.map((row) => ({
+          day_of_week: Number(row.day_of_week),
+          start_time: row.start_time,
+          end_time: row.end_time,
+          slot_minutes: Number(row.slot_minutes) || 30,
+          is_active: row.is_active !== false,
+        })),
+      });
+      setAvailabilityRows(res.data.rows || []);
+      showDialog("Availability Updated", "Your weekly availability has been saved.", "success");
+    } catch (err) {
+      showDialog(
+        "Availability Error",
+        err.response?.data?.message || "Could not save availability.",
+        "error",
+      );
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
+  const getCallAgainLabel = (queueItem) => {
+    if (queueItem?.can_call_again) {
+      return "Call Again";
+    }
+
+    if (!queueItem?.call_again_available_at) {
+      return "Call Again";
+    }
+
+    return `Available ${new Date(queueItem.call_again_available_at).toLocaleTimeString(
+      [],
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+      },
+    )}`;
+  };
+
   return (
     <div className="min-h-screen bg-teal-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -304,6 +428,8 @@ export default function DoctorDashboard() {
           </div>
         ) : (
           <div className="space-y-8">
+            <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+              <div className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="medical-card p-8">
                 <div className="flex items-start justify-between gap-4">
@@ -394,15 +520,54 @@ export default function DoctorDashboard() {
                         Appointment: {activeQueue.Appointment?.appointment_date} at{" "}
                         {activeQueue.Appointment?.appointment_time?.slice(0, 5)}
                       </p>
+                      {activeQueue.quick_summary && (
+                        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-4 text-sm text-gray-700">
+                          <p className="font-semibold text-teal-900">Quick Patient Snapshot</p>
+                          <p className="mt-2">
+                            Blood Group: {activeQueue.quick_summary.blood_group || "Not provided"}
+                          </p>
+                          <p className="mt-1">
+                            Age: {activeQueue.quick_summary.age
+                              ? `${activeQueue.quick_summary.age} years`
+                              : "Not provided"}
+                          </p>
+                          <p className="mt-1">
+                            Allergies: {activeQueue.quick_summary.allergies || "Not provided"}
+                          </p>
+                          <p className="mt-1">
+                            Chronic Conditions: {activeQueue.quick_summary.chronic_conditions || "Not provided"}
+                          </p>
+                          <p className="mt-1">
+                            Latest Summary: {activeQueue.quick_summary.last_visit_notes || "No previous summary"}
+                          </p>
+                        </div>
+                      )}
                       <button
                         type="button"
-                        onClick={() => openPatientProfileModal(activeQueue.Patient?.id)}
+                        onClick={() => openPatientProfileModal(activeQueue)}
                         className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-medium text-teal-700 hover:border-teal-400 transition-all">
                         <FileText size={16} /> View Patient Profile
                       </button>
                     </div>
 
                     <div className="grid gap-3">
+                      {activeQueue.status === "called" && (
+                        <button
+                          onClick={() =>
+                            runQueueAction(
+                              "/queue/call-again",
+                              { queue_id: activeQueue.id },
+                              "The patient has been called again",
+                            )
+                          }
+                          disabled={
+                            workingAction === "/queue/call-again" ||
+                            !activeQueue.can_call_again
+                          }
+                          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-700 hover:bg-slate-800 disabled:bg-slate-400 text-white py-3 font-semibold">
+                          <Repeat size={18} /> {getCallAgainLabel(activeQueue)}
+                        </button>
+                      )}
                       <button
                         onClick={() =>
                           runQueueAction(
@@ -442,6 +607,97 @@ export default function DoctorDashboard() {
             </div>
 
             <div className="medical-card p-8">
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-semibold">Weekly Availability</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Patients can only book within these windows
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addAvailabilityRow}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                  <Plus size={16} /> Add Window
+                </button>
+              </div>
+
+              {availabilityRows.length === 0 ? (
+                <div className="rounded-2xl bg-slate-50 px-5 py-5 text-sm text-gray-500">
+                  No weekly availability has been configured yet.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {availabilityRows.map((row, index) => (
+                    <div
+                      key={`${row.id || "new"}-${index}`}
+                      className="grid gap-3 rounded-3xl border border-gray-200 p-5 md:grid-cols-[1.2fr_1fr_1fr_0.8fr_0.8fr_auto]">
+                      <select
+                        value={row.day_of_week}
+                        onChange={(e) =>
+                          updateAvailabilityRow(index, "day_of_week", Number(e.target.value))
+                        }
+                        className="rounded-2xl border border-gray-300 px-4 py-3">
+                        {daysOfWeek.map((day, dayIndex) => (
+                          <option key={day} value={dayIndex}>
+                            {day}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="time"
+                        value={String(row.start_time).slice(0, 5)}
+                        onChange={(e) => updateAvailabilityRow(index, "start_time", e.target.value)}
+                        className="rounded-2xl border border-gray-300 px-4 py-3"
+                      />
+                      <input
+                        type="time"
+                        value={String(row.end_time).slice(0, 5)}
+                        onChange={(e) => updateAvailabilityRow(index, "end_time", e.target.value)}
+                        className="rounded-2xl border border-gray-300 px-4 py-3"
+                      />
+                      <input
+                        type="number"
+                        min="5"
+                        step="5"
+                        value={row.slot_minutes}
+                        onChange={(e) =>
+                          updateAvailabilityRow(index, "slot_minutes", e.target.value)
+                        }
+                        className="rounded-2xl border border-gray-300 px-4 py-3"
+                      />
+                      <label className="flex items-center gap-2 rounded-2xl border border-gray-300 px-4 py-3 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={row.is_active !== false}
+                          onChange={(e) =>
+                            updateAvailabilityRow(index, "is_active", e.target.checked)
+                          }
+                        />
+                        Active
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => removeAvailabilityRow(index)}
+                        className="rounded-2xl bg-red-50 px-4 py-3 text-red-600 hover:bg-red-100">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSaveAvailability}
+                disabled={savingAvailability}
+                className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400">
+                <Save size={18} />
+                {savingAvailability ? "Saving..." : "Save Availability"}
+              </button>
+            </div>
+
+            <div className="medical-card p-8">
               <div className="flex items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-semibold">Queue Overview</h2>
                 <p className="text-sm text-gray-500">
@@ -471,6 +727,19 @@ export default function DoctorDashboard() {
                             {item.Appointment?.appointment_date} at{" "}
                             {item.Appointment?.appointment_time?.slice(0, 5)}
                           </p>
+                          {item.quick_summary && (
+                            <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-gray-700">
+                              <p>
+                                Blood Group: {item.quick_summary.blood_group || "Not provided"}
+                              </p>
+                              <p className="mt-1">
+                                Allergies: {item.quick_summary.allergies || "Not provided"}
+                              </p>
+                              <p className="mt-1">
+                                Summary: {item.quick_summary.last_visit_notes || "No previous summary"}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -483,7 +752,7 @@ export default function DoctorDashboard() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => openPatientProfileModal(item.Patient?.id)}
+                          onClick={() => openPatientProfileModal(item)}
                           className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition-all">
                           <FileText size={16} /> View Patient Profile
                         </button>
@@ -493,9 +762,27 @@ export default function DoctorDashboard() {
                           </span>
                         )}
                         {item.status === "called" && (
-                          <span className="inline-flex items-center gap-2 text-sm text-amber-700">
-                            <ArrowRight size={16} /> Staff has been alerted
-                          </span>
+                          <>
+                            <span className="inline-flex items-center gap-2 text-sm text-amber-700">
+                              <ArrowRight size={16} /> Staff has been alerted
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                runQueueAction(
+                                  "/queue/call-again",
+                                  { queue_id: item.id },
+                                  "The patient has been called again",
+                                )
+                              }
+                              disabled={
+                                workingAction === "/queue/call-again" ||
+                                !item.can_call_again
+                              }
+                              className="inline-flex items-center gap-2 rounded-2xl bg-slate-700 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:bg-slate-400">
+                              <Repeat size={16} /> {getCallAgainLabel(item)}
+                            </button>
+                          </>
                         )}
                         {item.status === "in_consultation" && (
                           <span className="inline-flex items-center gap-2 text-sm text-teal-700">
@@ -507,6 +794,31 @@ export default function DoctorDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+              </div>
+
+              <div className="space-y-6">
+                <NotificationPanel
+                  notifications={notifications}
+                  title="Doctor Notifications"
+                  emptyMessage="No doctor notifications right now."
+                />
+
+                <div className="medical-card p-6">
+                  <div className="flex items-center gap-3">
+                    <CalendarClock className="h-6 w-6 text-teal-600" />
+                    <div>
+                      <h3 className="text-xl font-semibold text-teal-900">
+                        Scheduling Reminder
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Keep your weekly availability current so patients only book
+                        real open slots.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -662,12 +974,12 @@ export default function DoctorDashboard() {
             ? `${patientProfileRecord.patient.full_name} Profile`
             : "Patient Profile"
         }
-        maxWidthClass="max-w-2xl">
+        maxWidthClass="max-w-4xl">
         {loadingPatientProfile ? (
           <div className="py-10 text-center text-gray-500">Loading patient profile...</div>
         ) : patientProfileRecord ? (
           <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded-2xl bg-slate-50 px-5 py-4">
                 <p className="text-sm text-gray-500">Blood Group</p>
                 <p className="font-semibold text-lg mt-1">
@@ -680,47 +992,100 @@ export default function DoctorDashboard() {
                   {patientProfileRecord.patient?.phone || "Not provided"}
                 </p>
               </div>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Allergies</p>
-              <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
-                {patientProfileRecord.profile?.allergies || "No allergy information provided."}
+              <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                <p className="text-sm text-gray-500">Age</p>
+                <p className="font-semibold text-lg mt-1">
+                  {patientProfileRecord.profile?.age
+                    ? `${patientProfileRecord.profile.age} years`
+                    : "Not provided"}
+                </p>
               </div>
             </div>
 
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Chronic Conditions</p>
-              <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
-                {patientProfileRecord.profile?.chronic_conditions || "No chronic conditions recorded."}
+            <div className="grid gap-6 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Allergies</p>
+                <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
+                  {patientProfileRecord.profile?.allergies || "No allergy information provided."}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-2">Chronic Conditions</p>
+                <div className="rounded-2xl border border-gray-200 bg-white px-4 py-4 min-h-[96px] text-gray-700">
+                  {patientProfileRecord.profile?.chronic_conditions || "No chronic conditions recorded."}
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Last Visit Notes
-              </label>
+            <div className="rounded-3xl border border-gray-200 p-5">
+              <h3 className="text-lg font-semibold text-teal-900">
+                Structured Consultation Record
+              </h3>
               {!patientProfileRecord.can_edit_notes && (
-                <p className="mb-2 text-sm text-amber-700">
+                <p className="mb-4 mt-2 text-sm text-amber-700">
                   Notes become editable once the patient has been admitted, is in consultation, or has completed consultation.
                 </p>
               )}
-              <textarea
-                value={patientNotesDraft}
-                onChange={(e) => setPatientNotesDraft(e.target.value)}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600 h-32"
-                placeholder="Add the latest consultation summary for this patient"
-                disabled={!patientProfileRecord.can_edit_notes}
-              />
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  ["presenting_complaint", "Presenting Complaint"],
+                  ["findings", "Findings"],
+                  ["diagnosis", "Diagnosis"],
+                  ["treatment_plan", "Treatment Plan"],
+                  ["follow_up_advice", "Follow-up Advice"],
+                  ["note_summary", "Note Summary"],
+                ].map(([field, label]) => (
+                  <div key={field} className={field === "note_summary" ? "md:col-span-2" : ""}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      {label}
+                    </label>
+                    <textarea
+                      value={consultationForm[field]}
+                      onChange={(e) =>
+                        setConsultationForm((current) => ({
+                          ...current,
+                          [field]: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600 h-28 disabled:bg-slate-100"
+                      disabled={!patientProfileRecord.can_edit_notes}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveConsultationRecord}
+                disabled={savingConsultationRecord || !patientProfileRecord.can_edit_notes}
+                className="mt-5 w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-3.5 rounded-2xl font-semibold transition-all">
+                {savingConsultationRecord ? "Saving Record..." : "Save Consultation Record"}
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => handleSavePatientNotes(patientProfileRecord.patient?.id)}
-              disabled={savingPatientNotes || !patientProfileRecord.can_edit_notes}
-              className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-3.5 rounded-2xl font-semibold transition-all">
-              {savingPatientNotes ? "Saving Notes..." : "Save Last Visit Notes"}
-            </button>
+            <div className="rounded-3xl border border-gray-200 p-5">
+              <h3 className="text-lg font-semibold text-teal-900">Recent Visit History</h3>
+              {patientProfileRecord.consultationHistory?.length ? (
+                <div className="mt-4 space-y-4">
+                  {patientProfileRecord.consultationHistory.map((record) => (
+                    <div key={record.id} className="rounded-2xl bg-slate-50 px-4 py-4">
+                      <p className="font-semibold text-gray-800">
+                        {record.Appointment?.appointment_date} at{" "}
+                        {record.Appointment?.appointment_time?.slice(0, 5)}
+                      </p>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {record.note_summary || "No summary saved for that visit."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-gray-500">
+                  No previous consultation history is available yet.
+                </p>
+              )}
+            </div>
           </div>
         ) : (
           <div className="py-10 text-center text-gray-500">

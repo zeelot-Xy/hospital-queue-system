@@ -18,6 +18,10 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      date_of_birth: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
       allergies: {
         type: DataTypes.TEXT,
         allowNull: true,

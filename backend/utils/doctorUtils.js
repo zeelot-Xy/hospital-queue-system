@@ -1,4 +1,4 @@
-const { Doctor, User, Department } = require("../models");
+const { Doctor, User, Department, DoctorAvailability } = require("../models");
 
 const doctorInclude = [
   {
@@ -8,6 +8,19 @@ const doctorInclude = [
   {
     model: Department,
     attributes: ["id", "name"],
+  },
+  {
+    model: DoctorAvailability,
+    as: "Availabilities",
+    attributes: [
+      "id",
+      "day_of_week",
+      "start_time",
+      "end_time",
+      "slot_minutes",
+      "is_active",
+    ],
+    required: false,
   },
 ];
 

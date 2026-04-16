@@ -45,6 +45,17 @@ module.exports = (sequelize) => {
       arrived_at: {
         type: DataTypes.DATE,
       },
+      missed_at: {
+        type: DataTypes.DATE,
+      },
+      walk_in: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+      },
+      rescheduled_from_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
     },
     {
       timestamps: true,

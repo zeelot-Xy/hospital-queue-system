@@ -92,6 +92,11 @@ const doctorRoutes = require("./routes/doctorRoutes");
 const appointmentRoutes = require("./routes/appointmentRoutes");
 const queueRoutes = require("./routes/queueRoutes");
 const patientProfileRoutes = require("./routes/patientProfileRoutes");
+const availabilityRoutes = require("./routes/availabilityRoutes");
+const consultationRoutes = require("./routes/consultationRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const reportingRoutes = require("./routes/reportingRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 // Use routes
 app.use("/api/departments", departmentRoutes);
@@ -99,6 +104,11 @@ app.use("/api/doctors", doctorRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/queue", queueRoutes);
 app.use("/api/patient-profile", patientProfileRoutes);
+app.use("/api/availability", availabilityRoutes);
+app.use("/api/consultations", consultationRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports", reportingRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 app.get(
   "/api/dev/users",

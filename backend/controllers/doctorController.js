@@ -1,5 +1,6 @@
 const { Doctor, User, Department } = require("../models/index");
 const { doctorInclude, getDoctorByUserId } = require("../utils/doctorUtils");
+const { logAudit } = require("../utils/auditLogger");
 
 const getAllDoctors = async (req, res) => {
   try {
@@ -61,6 +62,16 @@ const updateMyDoctorProfile = async (req, res) => {
       }),
     ]);
 
+    await logAudit({
+      actorUserId: req.user.id,
+      actionType: "doctor.profile.updated",
+      targetType: "doctor",
+      targetId: doctor.id,
+      metadata: {
+        department_id: Number(department_id),
+      },
+    });
+
     const updatedDoctor = await getDoctorByUserId(req.user.id);
     res.json(updatedDoctor);
   } catch (error) {
@@ -112,6 +123,17 @@ const createDoctor = async (req, res) => {
 
     const createdDoctor = await Doctor.findByPk(doctor.id, {
       include: doctorInclude,
+    });
+
+    await logAudit({
+      actorUserId: req.user.id,
+      actionType: "doctor.created",
+      targetType: "doctor",
+      targetId: doctor.id,
+      metadata: {
+        user_id,
+        department_id,
+      },
     });
 
     res.status(201).json(createdDoctor);

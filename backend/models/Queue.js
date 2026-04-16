@@ -36,6 +36,7 @@ module.exports = (sequelize) => {
           "admitted",
           "in_consultation",
           "completed",
+          "missed",
         ),
         defaultValue: "waiting",
       },
@@ -46,6 +47,13 @@ module.exports = (sequelize) => {
       called_at: {
         type: DataTypes.DATE,
       },
+      last_called_at: {
+        type: DataTypes.DATE,
+      },
+      call_count: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
       admitted_at: {
         type: DataTypes.DATE,
       },
@@ -54,6 +62,18 @@ module.exports = (sequelize) => {
       },
       completed_at: {
         type: DataTypes.DATE,
+      },
+      transfer_reason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      transferred_from_doctor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      transferred_from_department_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
     },
     {

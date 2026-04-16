@@ -9,7 +9,17 @@ async function getCounts(transaction) {
     `
       SELECT 'appointments' AS table_name, COUNT(*)::int AS count FROM appointments
       UNION ALL
+      SELECT 'audit_logs', COUNT(*)::int FROM audit_logs
+      UNION ALL
+      SELECT 'consultation_records', COUNT(*)::int FROM consultation_records
+      UNION ALL
+      SELECT 'doctor_availabilities', COUNT(*)::int FROM doctor_availabilities
+      UNION ALL
       SELECT 'doctors', COUNT(*)::int FROM doctors
+      UNION ALL
+      SELECT 'notifications', COUNT(*)::int FROM notifications
+      UNION ALL
+      SELECT 'patient_profiles', COUNT(*)::int FROM patient_profiles
       UNION ALL
       SELECT 'queues', COUNT(*)::int FROM queues
       UNION ALL
@@ -32,8 +42,13 @@ async function resetAuthData() {
     console.log("Current auth-related records:");
     console.table(before);
 
+    await sequelize.query("DELETE FROM notifications;", { transaction });
+    await sequelize.query("DELETE FROM audit_logs;", { transaction });
+    await sequelize.query("DELETE FROM consultation_records;", { transaction });
     await sequelize.query("DELETE FROM queues;", { transaction });
     await sequelize.query("DELETE FROM appointments;", { transaction });
+    await sequelize.query("DELETE FROM doctor_availabilities;", { transaction });
+    await sequelize.query("DELETE FROM patient_profiles;", { transaction });
     await sequelize.query("DELETE FROM doctors;", { transaction });
     await sequelize.query("DELETE FROM users;", { transaction });
 

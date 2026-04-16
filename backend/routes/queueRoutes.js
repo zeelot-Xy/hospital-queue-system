@@ -9,9 +9,12 @@ const {
   getStaffLiveQueues,
   getMyQueueStatus,
   callNextPatient,
+  callAgain,
   confirmAdmit,
   startConsultation,
   completeConsultation,
+  returnToWaiting,
+  transferQueue,
 } = require("../controllers/queueController");
 
 const router = express.Router();
@@ -37,6 +40,12 @@ router.post(
   callNextPatient,
 );
 router.post(
+  "/call-again",
+  authenticateToken,
+  authorizeRole("doctor"),
+  callAgain,
+);
+router.post(
   "/confirm-admit",
   authenticateToken,
   authorizeRole("staff", "admin"),
@@ -53,6 +62,18 @@ router.post(
   authenticateToken,
   authorizeRole("doctor", "staff", "admin"),
   completeConsultation,
+);
+router.post(
+  "/return-to-waiting",
+  authenticateToken,
+  authorizeRole("staff", "admin"),
+  returnToWaiting,
+);
+router.post(
+  "/transfer",
+  authenticateToken,
+  authorizeRole("staff", "admin"),
+  transferQueue,
 );
 
 module.exports = router;

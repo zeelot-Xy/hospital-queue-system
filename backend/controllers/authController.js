@@ -9,7 +9,11 @@ const {
   Appointment,
   Queue,
   PatientProfile,
+  DoctorAvailability,
+  ConsultationRecord,
+  Notification,
 } = require("../models/index");
+const { logAudit } = require("../utils/auditLogger");
 const { emitQueueEvent } = require("../utils/socketEvents");
 
 const register = async (req, res) => {
@@ -69,6 +73,22 @@ const register = async (req, res) => {
         specialization: specialization || "General Medicine",
       });
     }
+
+    if ((role || "patient") === "patient") {
+      await PatientProfile.create({
+        user_id: user.id,
+      });
+    }
+
+    await logAudit({
+      actorUserId: user.id,
+      actionType: "auth.register",
+      targetType: "user",
+      targetId: user.id,
+      metadata: {
+        role: user.role,
+      },
+    });
 
     const token = jwt.sign(
       { id: user.id, role: user.role },
@@ -200,12 +220,20 @@ const deleteMyAccount = async (req, res) => {
           await Queue.destroy({ where: queueWhere, transaction });
 
           if (appointmentIds.length) {
+            await ConsultationRecord.destroy({
+              where: { appointment_id: { [Op.in]: appointmentIds } },
+              transaction,
+            });
             await Appointment.destroy({
               where: { id: { [Op.in]: appointmentIds } },
               transaction,
             });
           }
 
+          await DoctorAvailability.destroy({
+            where: { doctor_id: doctor.id },
+            transaction,
+          });
           await Doctor.destroy({ where: { id: doctor.id }, transaction });
         }
 
@@ -252,9 +280,13 @@ const deleteMyAccount = async (req, res) => {
         await Queue.destroy({ where: queueWhere, transaction });
 
         if (appointmentIds.length) {
-          await Appointment.destroy({
-            where: { id: { [Op.in]: appointmentIds } },
+          await ConsultationRecord.destroy({
+            where: { appointment_id: { [Op.in]: appointmentIds } },
             transaction,
+          });
+          await Appointment.destroy({
+              where: { id: { [Op.in]: appointmentIds } },
+              transaction,
           });
         }
 
@@ -264,7 +296,24 @@ const deleteMyAccount = async (req, res) => {
         });
       }
 
+      await Notification.destroy({
+        where: {
+          [Op.or]: [{ recipient_user_id: user.id }, { recipient_role: user.role }],
+        },
+        transaction,
+      });
+
       await User.destroy({ where: { id: user.id }, transaction });
+    });
+
+    await logAudit({
+      actorUserId: req.user.id,
+      actionType: "account.deleted",
+      targetType: "user",
+      targetId: user.id,
+      metadata: {
+        role: user.role,
+      },
     });
 
     const rooms = [

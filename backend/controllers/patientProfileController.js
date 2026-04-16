@@ -1,11 +1,14 @@
 const { Op } = require("sequelize");
-const { PatientProfile, Queue, User } = require("../models");
+const { ConsultationRecord, PatientProfile, Queue, User } = require("../models");
 const { getDoctorByUserId } = require("../utils/doctorUtils");
+const { logAudit } = require("../utils/auditLogger");
+const { getPatientConsultationHistory } = require("./consultationController");
 
 const profileAttributes = [
   "id",
   "user_id",
   "blood_group",
+  "date_of_birth",
   "allergies",
   "chronic_conditions",
   "last_visit_notes",
@@ -18,6 +21,7 @@ const getOrCreatePatientProfile = async (userId) => {
     where: { user_id: userId },
     defaults: {
       blood_group: "",
+      date_of_birth: null,
       allergies: "",
       chronic_conditions: "",
       last_visit_notes: "",
@@ -63,7 +67,13 @@ const ensureDoctorPatientAccess = async (doctorUserId, patientId, allowedStatuse
 const getMyPatientProfile = async (req, res) => {
   try {
     const profile = await getOrCreatePatientProfile(req.user.id);
-    res.json(profile);
+    const age = profile.date_of_birth
+      ? Math.floor(
+          (Date.now() - new Date(profile.date_of_birth).getTime()) /
+            (365.25 * 24 * 60 * 60 * 1000),
+        )
+      : null;
+    res.json({ ...profile.toJSON(), age });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -71,13 +81,21 @@ const getMyPatientProfile = async (req, res) => {
 
 const updateMyPatientProfile = async (req, res) => {
   try {
-    const { blood_group, allergies, chronic_conditions } = req.body;
+    const { blood_group, date_of_birth, allergies, chronic_conditions } = req.body;
     const profile = await getOrCreatePatientProfile(req.user.id);
 
     await profile.update({
       blood_group: blood_group?.trim() || "",
+      date_of_birth: date_of_birth || null,
       allergies: allergies?.trim() || "",
       chronic_conditions: chronic_conditions?.trim() || "",
+    });
+
+    await logAudit({
+      actorUserId: req.user.id,
+      actionType: "patient.profile.updated",
+      targetType: "patient_profile",
+      targetId: profile.id,
     });
 
     res.json(profile);
@@ -97,11 +115,12 @@ const getDoctorPatientProfile = async (req, res) => {
       "completed",
     ]);
 
-    const [profile, patient] = await Promise.all([
+    const [profile, patient, consultationHistory] = await Promise.all([
       getOrCreatePatientProfile(patientId),
       User.findByPk(patientId, {
         attributes: ["id", "full_name", "email", "phone"],
       }),
+      getPatientConsultationHistory(patientId),
     ]);
 
     if (!patient || patient.role !== "patient") {
@@ -110,7 +129,16 @@ const getDoctorPatientProfile = async (req, res) => {
 
     res.json({
       patient,
-      profile,
+      profile: {
+        ...profile.toJSON(),
+        age: profile.date_of_birth
+          ? Math.floor(
+              (Date.now() - new Date(profile.date_of_birth).getTime()) /
+                (365.25 * 24 * 60 * 60 * 1000),
+            )
+          : null,
+      },
+      consultationHistory,
       queue_status: queue.status,
       can_edit_notes: ["admitted", "in_consultation", "completed"].includes(
         queue.status,
@@ -135,6 +163,27 @@ const updateDoctorPatientNotes = async (req, res) => {
     const profile = await getOrCreatePatientProfile(patientId);
     await profile.update({
       last_visit_notes: last_visit_notes?.trim() || "",
+    });
+
+    const latestRecord = await ConsultationRecord.findOne({
+      where: { patient_id: Number(patientId) },
+      order: [["createdAt", "DESC"]],
+    });
+
+    if (latestRecord) {
+      await latestRecord.update({
+        note_summary: last_visit_notes?.trim() || "",
+      });
+    }
+
+    await logAudit({
+      actorUserId: req.user.id,
+      actionType: "doctor.patient_notes.updated",
+      targetType: "patient_profile",
+      targetId: profile.id,
+      metadata: {
+        patientId: Number(patientId),
+      },
     });
 
     res.json(profile);

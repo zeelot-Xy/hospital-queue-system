@@ -3,15 +3,20 @@ import { useNavigate } from "react-router-dom";
 import {
   BellRing,
   Building,
+  CalendarClock,
   CheckCircle2,
   Edit2,
+  FileText,
   Loader,
   Plus,
+  RefreshCcw,
   Trash2,
+  TriangleAlert,
   UserRoundPlus,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
 import Modal from "../../components/Modal";
+import NotificationPanel from "../../components/NotificationPanel";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
 import { disconnectSocket, getSocket } from "../../lib/socket";
@@ -23,16 +28,46 @@ export default function StaffDashboard() {
   const [doctors, setDoctors] = useState([]);
   const [queues, setQueues] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [doctorGroups, setDoctorGroups] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [reports, setReports] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showDeptModal, setShowDeptModal] = useState(false);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [selectedQueue, setSelectedQueue] = useState(null);
   const [deptForm, setDeptForm] = useState({ name: "", description: "" });
   const [doctorForm, setDoctorForm] = useState({
     user_id: "",
     department_id: "",
     specialization: "",
+  });
+  const [walkInForm, setWalkInForm] = useState({
+    full_name: "",
+    phone: "",
+    email: "",
+    doctor_id: "",
+    department_id: "",
+    blood_group: "",
+    date_of_birth: "",
+    allergies: "",
+    chronic_conditions: "",
+  });
+  const [rescheduleForm, setRescheduleForm] = useState({
+    appointment_date: "",
+    appointment_time: "",
+  });
+  const [transferForm, setTransferForm] = useState({
+    doctor_id: "",
+    department_id: "",
+    transfer_reason: "",
   });
   const [dialog, setDialog] = useState({
     isOpen: false,
@@ -80,12 +115,38 @@ export default function StaffDashboard() {
     const res = await api.get("/queue/live");
     setQueues(res.data.queues);
     setAlerts(res.data.alerts);
+    setDoctorGroups(res.data.doctorGroups || []);
+  };
+
+  const fetchAppointments = async () => {
+    const res = await api.get("/appointments/staff");
+    setAppointments(res.data.appointments || []);
+  };
+
+  const fetchReports = async () => {
+    const [reportsRes, auditRes] = await Promise.all([
+      api.get("/reports"),
+      api.get("/audit-logs"),
+    ]);
+    setReports(reportsRes.data);
+    setAuditLogs(auditRes.data.logs || []);
+  };
+
+  const fetchNotifications = async () => {
+    const res = await api.get("/notifications");
+    setNotifications(res.data.notifications || []);
   };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchManagementData(), fetchQueueBoard()]);
+      await Promise.all([
+        fetchManagementData(),
+        fetchQueueBoard(),
+        fetchAppointments(),
+        fetchReports(),
+        fetchNotifications(),
+      ]);
     } catch (err) {
       console.error(err);
       openDialog({
@@ -118,13 +179,20 @@ export default function StaffDashboard() {
         return payload.queue ? [payload.queue, ...withoutDuplicate] : current;
       });
     };
+    const handleNotification = ({ notification }) => {
+      if (notification) {
+        setNotifications((current) => [notification, ...current].slice(0, 20));
+      }
+    };
 
     socket.on("queue:refresh", refresh);
     socket.on("staff:alert", handleAlert);
+    socket.on("notification:new", handleNotification);
 
     return () => {
       socket.off("queue:refresh", refresh);
       socket.off("staff:alert", handleAlert);
+      socket.off("notification:new", handleNotification);
     };
   }, []);
 
@@ -227,7 +295,7 @@ export default function StaffDashboard() {
   const handleConfirmAdmit = async (queueId) => {
     try {
       await api.post("/queue/confirm-admit", { queue_id: queueId });
-      await fetchQueueBoard();
+      await Promise.all([fetchQueueBoard(), fetchNotifications()]);
       openDialog({
         title: "Patient Admitted",
         message: "The patient has been marked as admitted.",
@@ -245,7 +313,7 @@ export default function StaffDashboard() {
   const handleComplete = async (queueId) => {
     try {
       await api.post("/queue/complete", { queue_id: queueId });
-      await fetchQueueBoard();
+      await Promise.all([fetchQueueBoard(), fetchReports(), fetchNotifications()]);
       openDialog({
         title: "Queue Completed",
         message: "The queue item has been completed.",
@@ -257,6 +325,152 @@ export default function StaffDashboard() {
         message: err.response?.data?.message || "Could not complete queue item",
         variant: "error",
       });
+    }
+  };
+
+  const handleReturnToWaiting = async (queueId) => {
+    try {
+      await api.post("/queue/return-to-waiting", { queue_id: queueId });
+      await fetchQueueBoard();
+      openDialog({
+        title: "Returned To Waiting",
+        message: "The patient has been returned to the waiting queue.",
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Return Failed",
+        message: err.response?.data?.message || "Could not return this patient to waiting.",
+        variant: "error",
+      });
+    }
+  };
+
+  const handleWalkInSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await api.post("/appointments/walk-in", {
+        ...walkInForm,
+        doctor_id: Number(walkInForm.doctor_id),
+        department_id: Number(walkInForm.department_id),
+      });
+      setShowWalkInModal(false);
+      setWalkInForm({
+        full_name: "",
+        phone: "",
+        email: "",
+        doctor_id: "",
+        department_id: "",
+        blood_group: "",
+        date_of_birth: "",
+        allergies: "",
+        chronic_conditions: "",
+      });
+      await Promise.all([fetchQueueBoard(), fetchAppointments(), fetchReports()]);
+      openDialog({
+        title: "Walk-in Added",
+        message: `Walk-in registered successfully. Temporary login email: ${res.data.temporary_credentials.email}`,
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Walk-in Failed",
+        message: err.response?.data?.message || "Could not register walk-in patient.",
+        variant: "error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openRescheduleModal = (appointment) => {
+    setSelectedAppointment(appointment);
+    setRescheduleForm({
+      appointment_date: appointment.appointment_date,
+      appointment_time: appointment.appointment_time?.slice(0, 5) || "",
+    });
+    setShowRescheduleModal(true);
+  };
+
+  const handleRescheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedAppointment) return;
+    setSubmitting(true);
+    try {
+      await api.post(`/appointments/${selectedAppointment.id}/reschedule`, rescheduleForm);
+      setShowRescheduleModal(false);
+      await Promise.all([fetchAppointments(), fetchQueueBoard(), fetchReports()]);
+      openDialog({
+        title: "Appointment Rescheduled",
+        message: "The appointment has been rescheduled successfully.",
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Reschedule Failed",
+        message: err.response?.data?.message || "Could not reschedule the appointment.",
+        variant: "error",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleMarkMissed = async (appointmentId) => {
+    try {
+      await api.post(`/appointments/${appointmentId}/miss`);
+      await Promise.all([fetchAppointments(), fetchQueueBoard(), fetchReports()]);
+      openDialog({
+        title: "Appointment Marked Missed",
+        message: "The appointment has been marked as missed.",
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Missed Action Failed",
+        message: err.response?.data?.message || "Could not mark appointment as missed.",
+        variant: "error",
+      });
+    }
+  };
+
+  const openTransferModal = (queue) => {
+    setSelectedQueue(queue);
+    setTransferForm({
+      doctor_id: "",
+      department_id: "",
+      transfer_reason: "",
+    });
+    setShowTransferModal(true);
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedQueue) return;
+    setSubmitting(true);
+    try {
+      await api.post("/queue/transfer", {
+        queue_id: selectedQueue.id,
+        doctor_id: Number(transferForm.doctor_id),
+        department_id: Number(transferForm.department_id),
+        transfer_reason: transferForm.transfer_reason,
+      });
+      setShowTransferModal(false);
+      await Promise.all([fetchQueueBoard(), fetchAppointments(), fetchReports()]);
+      openDialog({
+        title: "Queue Transferred",
+        message: "The patient was reassigned successfully.",
+        variant: "success",
+      });
+    } catch (err) {
+      openDialog({
+        title: "Transfer Failed",
+        message: err.response?.data?.message || "Could not transfer the queue item.",
+        variant: "error",
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -291,8 +505,10 @@ export default function StaffDashboard() {
         <div className="flex flex-wrap gap-3 border-b mb-8">
           {[
             ["queue", "Live Queue"],
+            ["appointments", "Appointments"],
             ["departments", "Departments"],
             ["doctors", "Doctors"],
+            ["reports", "Reports"],
           ].map(([value, label]) => (
             <button
               key={value}
@@ -315,6 +531,12 @@ export default function StaffDashboard() {
           <>
             {activeTab === "queue" && (
               <div className="space-y-8">
+                <NotificationPanel
+                  notifications={notifications}
+                  title="Staff Notifications"
+                  emptyMessage="No staff notifications right now."
+                />
+
                 <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
                   <div className="medical-card p-8">
                     <div className="flex items-center justify-between gap-4 mb-6">
@@ -362,6 +584,13 @@ export default function StaffDashboard() {
                           Real-time view of all active patient flow
                         </p>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setShowWalkInModal(true)}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                          <Plus size={16} /> Add Walk-in
+                        </button>
+                      </div>
                     </div>
 
                     {queues.length === 0 ? (
@@ -385,6 +614,20 @@ export default function StaffDashboard() {
                                 Appointment: {queue.Appointment?.appointment_date} at{" "}
                                 {queue.Appointment?.appointment_time?.slice(0, 5)}
                               </p>
+                              <p className="mt-2 text-xs text-gray-500">
+                                Waiting: {queue.waiting_duration_minutes || 0} mins
+                                {queue.status === "called"
+                                  ? ` • Called for ${queue.called_duration_minutes || 0} mins`
+                                  : ""}
+                              </p>
+                              {queue.attention_state !== "normal" && (
+                                <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                                  <TriangleAlert size={14} />
+                                  {queue.attention_state === "long_wait"
+                                    ? "Longest waiting attention"
+                                    : "Overdue to admit"}
+                                </p>
+                              )}
                             </div>
 
                             <div className="flex items-center gap-3 flex-wrap">
@@ -395,10 +638,24 @@ export default function StaffDashboard() {
                                 {formatQueueStatus(queue.status)}
                               </span>
                               {queue.status === "called" && (
+                                <>
+                                  <button
+                                    onClick={() => handleConfirmAdmit(queue.id)}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
+                                    Confirm Admit
+                                  </button>
+                                  <button
+                                    onClick={() => handleReturnToWaiting(queue.id)}
+                                    className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
+                                    Return To Waiting
+                                  </button>
+                                </>
+                              )}
+                              {["waiting", "called", "admitted"].includes(queue.status) && (
                                 <button
-                                  onClick={() => handleConfirmAdmit(queue.id)}
-                                  className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-2xl text-sm font-medium">
-                                  Confirm Admit
+                                  onClick={() => openTransferModal(queue)}
+                                  className="bg-white border border-teal-200 text-teal-700 px-4 py-2 rounded-2xl text-sm font-medium hover:bg-teal-50">
+                                  Transfer
                                 </button>
                               )}
                               {["admitted", "in_consultation"].includes(queue.status) && (
@@ -415,6 +672,106 @@ export default function StaffDashboard() {
                     )}
                   </div>
                 </div>
+
+                {doctorGroups.length > 0 && (
+                  <div className="medical-card p-8">
+                    <div className="mb-6 flex items-center gap-3">
+                      <BellRing className="text-teal-600" />
+                      <div>
+                        <h2 className="text-2xl font-semibold">Waiting Room by Doctor</h2>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Queue grouping to help reception coordinate flow faster
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      {doctorGroups.map((group) => (
+                        <div key={group.doctor_id} className="rounded-3xl border border-gray-200 p-5">
+                          <p className="font-semibold text-teal-900">
+                            Dr. {group.doctor_name}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {group.department_name}
+                          </p>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {group.queues.map((item) => (
+                              <span
+                                key={item.id}
+                                className={`rounded-full px-3 py-1.5 text-xs font-medium ${queueStatusStyles[item.status]}`}
+                              >
+                                #{item.queue_number} {item.Patient?.full_name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "appointments" && (
+              <div className="medical-card p-8">
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-2xl font-semibold">Appointments</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Manage walk-ins, reschedules, and missed appointments
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowWalkInModal(true)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-5 py-3 font-medium text-white hover:bg-teal-700">
+                    <Plus size={18} /> New Walk-in
+                  </button>
+                </div>
+
+                {appointments.length === 0 ? (
+                  <p className="py-12 text-center text-gray-500">
+                    No active appointments to manage right now.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {appointments.map((appointment) => (
+                      <div key={appointment.id} className="rounded-3xl border border-gray-200 p-6">
+                        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <p className="text-lg font-semibold">
+                              {appointment.Patient?.full_name}
+                            </p>
+                            <p className="mt-1 text-gray-600">
+                              Dr. {appointment.Doctor?.User?.full_name} - {appointment.Department?.name}
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500">
+                              {appointment.appointment_date} at{" "}
+                              {appointment.appointment_time?.slice(0, 5)}
+                              {appointment.walk_in ? " • Walk-in" : ""}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <span
+                              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                                queueStatusStyles[appointment.status] || "bg-slate-100 text-slate-700"
+                              }`}>
+                              {formatQueueStatus(appointment.status)}
+                            </span>
+                            <button
+                              onClick={() => openRescheduleModal(appointment)}
+                              className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50">
+                              <CalendarClock size={16} /> Reschedule
+                            </button>
+                            <button
+                              onClick={() => handleMarkMissed(appointment.id)}
+                              className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                              <TriangleAlert size={16} /> Mark Missed
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -521,6 +878,93 @@ export default function StaffDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "reports" && (
+              <div className="space-y-8">
+                <div className="medical-card p-8">
+                  <div className="mb-6 flex items-center gap-3">
+                    <FileText className="text-teal-600" />
+                    <div>
+                      <h2 className="text-2xl font-semibold">Operational Reports</h2>
+                      <p className="mt-1 text-sm text-gray-500">
+                        Daily operations metrics for staff and admin review
+                      </p>
+                    </div>
+                  </div>
+
+                  {reports && (
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      {[
+                        ["Patients Seen", reports.metrics?.patients_seen],
+                        ["Missed", reports.metrics?.missed_appointments],
+                        ["Rescheduled", reports.metrics?.rescheduled_appointments],
+                        ["Walk-ins", reports.metrics?.walk_in_volume],
+                        ["Booked", reports.metrics?.booked_volume],
+                        ["Avg Wait", `${reports.metrics?.average_wait_minutes || 0} mins`],
+                        [
+                          "Avg Consultation",
+                          `${reports.metrics?.average_consultation_minutes || 0} mins`,
+                        ],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-3xl bg-slate-50 p-5">
+                          <p className="text-sm text-gray-500">{label}</p>
+                          <p className="mt-2 text-2xl font-bold text-teal-900">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="medical-card p-8">
+                    <h3 className="text-xl font-semibold">Busiest Doctors</h3>
+                    <div className="mt-4 space-y-3">
+                      {(reports?.busiestDoctors || []).map((item) => (
+                        <div key={item.doctor_id} className="rounded-2xl bg-slate-50 px-4 py-4">
+                          <p className="font-semibold text-teal-900">
+                            Dr. {item.Doctor?.User?.full_name}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Completed: {item.dataValues?.completed_count || item.completed_count}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="medical-card p-8">
+                    <h3 className="text-xl font-semibold">Busiest Departments</h3>
+                    <div className="mt-4 space-y-3">
+                      {(reports?.busiestDepartments || []).map((item) => (
+                        <div key={item.department_id} className="rounded-2xl bg-slate-50 px-4 py-4">
+                          <p className="font-semibold text-teal-900">
+                            {item.Department?.name}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            Completed: {item.dataValues?.completed_count || item.completed_count}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="medical-card p-8">
+                  <h3 className="text-xl font-semibold">Recent Audit Activity</h3>
+                  <div className="mt-4 space-y-3">
+                    {auditLogs.map((log) => (
+                      <div key={log.id} className="rounded-2xl border border-gray-200 px-4 py-4">
+                        <p className="font-semibold text-teal-900">{log.action_type}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          Actor: {log.Actor?.full_name || "System"} • Target: {log.target_type}
+                          {log.target_id ? ` #${log.target_id}` : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -638,6 +1082,276 @@ export default function StaffDashboard() {
             disabled={submitting}
             className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-4 rounded-2xl font-semibold text-lg transition-all">
             {submitting ? "Adding Doctor..." : "Add Doctor"}
+          </button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showWalkInModal}
+        onClose={() => setShowWalkInModal(false)}
+        title="Register Walk-in Patient"
+        maxWidthClass="max-w-3xl">
+        <form onSubmit={handleWalkInSubmit} className="grid gap-5 md:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Full Name</label>
+            <input
+              type="text"
+              value={walkInForm.full_name}
+              onChange={(e) =>
+                setWalkInForm((current) => ({ ...current, full_name: e.target.value }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Phone</label>
+            <input
+              type="tel"
+              value={walkInForm.phone}
+              onChange={(e) =>
+                setWalkInForm((current) => ({ ...current, phone: e.target.value }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Email (Optional)</label>
+            <input
+              type="email"
+              value={walkInForm.email}
+              onChange={(e) =>
+                setWalkInForm((current) => ({ ...current, email: e.target.value }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Date of Birth</label>
+            <input
+              type="date"
+              value={walkInForm.date_of_birth}
+              onChange={(e) =>
+                setWalkInForm((current) => ({
+                  ...current,
+                  date_of_birth: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Department</label>
+            <select
+              value={walkInForm.department_id}
+              onChange={(e) =>
+                setWalkInForm((current) => ({
+                  ...current,
+                  department_id: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required>
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Doctor</label>
+            <select
+              value={walkInForm.doctor_id}
+              onChange={(e) =>
+                setWalkInForm((current) => ({ ...current, doctor_id: e.target.value }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required>
+              <option value="">Select Doctor</option>
+              {doctors
+                .filter((doctor) =>
+                  walkInForm.department_id
+                    ? String(doctor.Department?.id) === String(walkInForm.department_id)
+                    : true,
+                )
+                .map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.User?.full_name} - {doctor.specialization}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Blood Group</label>
+            <input
+              type="text"
+              value={walkInForm.blood_group}
+              onChange={(e) =>
+                setWalkInForm((current) => ({
+                  ...current,
+                  blood_group: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">Allergies</label>
+            <textarea
+              value={walkInForm.allergies}
+              onChange={(e) =>
+                setWalkInForm((current) => ({ ...current, allergies: e.target.value }))
+              }
+              className="h-24 w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Chronic Conditions
+            </label>
+            <textarea
+              value={walkInForm.chronic_conditions}
+              onChange={(e) =>
+                setWalkInForm((current) => ({
+                  ...current,
+                  chronic_conditions: e.target.value,
+                }))
+              }
+              className="h-24 w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full rounded-2xl bg-teal-600 py-4 text-lg font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400">
+              {submitting ? "Registering Walk-in..." : "Register Walk-in"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showRescheduleModal}
+        onClose={() => setShowRescheduleModal(false)}
+        title="Reschedule Appointment">
+        <form onSubmit={handleRescheduleSubmit} className="space-y-5">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Appointment Date
+            </label>
+            <input
+              type="date"
+              value={rescheduleForm.appointment_date}
+              onChange={(e) =>
+                setRescheduleForm((current) => ({
+                  ...current,
+                  appointment_date: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Appointment Time
+            </label>
+            <input
+              type="time"
+              step="900"
+              value={rescheduleForm.appointment_time}
+              onChange={(e) =>
+                setRescheduleForm((current) => ({
+                  ...current,
+                  appointment_time: e.target.value,
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-2xl bg-teal-600 py-4 text-lg font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400">
+            {submitting ? "Rescheduling..." : "Save New Appointment Time"}
+          </button>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showTransferModal}
+        onClose={() => setShowTransferModal(false)}
+        title="Transfer Queue Patient">
+        <form onSubmit={handleTransferSubmit} className="space-y-5">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Department</label>
+            <select
+              value={transferForm.department_id}
+              onChange={(e) =>
+                setTransferForm((current) => ({
+                  ...current,
+                  department_id: e.target.value,
+                  doctor_id: "",
+                }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required>
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Doctor</label>
+            <select
+              value={transferForm.doctor_id}
+              onChange={(e) =>
+                setTransferForm((current) => ({ ...current, doctor_id: e.target.value }))
+              }
+              className="w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+              required>
+              <option value="">Select Doctor</option>
+              {doctors
+                .filter((doctor) =>
+                  transferForm.department_id
+                    ? String(doctor.Department?.id) === String(transferForm.department_id)
+                    : true,
+                )
+                .map((doctor) => (
+                  <option key={doctor.id} value={doctor.id}>
+                    {doctor.User?.full_name} - {doctor.specialization}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">
+              Transfer Reason
+            </label>
+            <textarea
+              value={transferForm.transfer_reason}
+              onChange={(e) =>
+                setTransferForm((current) => ({
+                  ...current,
+                  transfer_reason: e.target.value,
+                }))
+              }
+              className="h-24 w-full rounded-2xl border border-gray-300 px-5 py-4 focus:border-teal-600 focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-2xl bg-teal-600 py-4 text-lg font-semibold text-white hover:bg-teal-700 disabled:bg-teal-400">
+            {submitting ? "Transferring..." : "Transfer Patient"}
           </button>
         </form>
       </Modal>
