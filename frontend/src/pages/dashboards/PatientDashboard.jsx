@@ -6,6 +6,7 @@ import {
   Clock3,
   LogOut,
   Stethoscope,
+  Trash2,
   User,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
@@ -51,6 +52,7 @@ export default function PatientDashboard() {
   const [bookingForm, setBookingForm] = useState(initialBookingState);
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: "",
@@ -292,6 +294,36 @@ export default function PatientDashboard() {
     localStorage.clear();
     disconnectSocket();
     navigate("/login");
+  };
+
+  const handleDeleteAccount = () => {
+    openDialog({
+      title: "Delete Patient Account",
+      message:
+        "This will permanently remove your patient account, medical profile, appointments, and queue records. This action cannot be undone.",
+      variant: "error",
+      confirmText: deletingAccount ? "Deleting..." : "Delete Account",
+      cancelText: "Keep Account",
+      onConfirm: async () => {
+        setDeletingAccount(true);
+
+        try {
+          await api.delete("/auth/me");
+          localStorage.clear();
+          disconnectSocket();
+          navigate("/login");
+        } catch (err) {
+          openDialog({
+            title: "Delete Failed",
+            message:
+              err.response?.data?.message || "Could not delete your account.",
+            variant: "error",
+          });
+        } finally {
+          setDeletingAccount(false);
+        }
+      },
+    });
   };
 
   return (
@@ -679,9 +711,25 @@ export default function PatientDashboard() {
               <div className="md:col-span-2">
                 <button
                   type="submit"
-                  disabled={savingProfile}
+                  disabled={savingProfile || deletingAccount}
                   className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-4 rounded-2xl font-semibold transition-all">
                   {savingProfile ? "Saving Profile..." : "Save Medical Profile"}
+                </button>
+              </div>
+
+              <div className="md:col-span-2 rounded-3xl border border-red-200 bg-red-50 px-6 py-5">
+                <p className="text-sm font-semibold text-red-800">Danger Zone</p>
+                <p className="mt-2 text-sm text-red-700">
+                  Deleting your account will permanently remove your patient
+                  profile, appointments, and queue history from the app.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={deletingAccount || savingProfile}
+                  className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:bg-red-400">
+                  <Trash2 size={16} />
+                  {deletingAccount ? "Deleting Account..." : "Delete Account"}
                 </button>
               </div>
             </form>

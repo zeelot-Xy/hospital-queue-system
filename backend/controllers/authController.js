@@ -1,6 +1,16 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { User, Doctor, Department } = require("../models/index");
+const { Op } = require("sequelize");
+const {
+  sequelize,
+  User,
+  Doctor,
+  Department,
+  Appointment,
+  Queue,
+  PatientProfile,
+} = require("../models/index");
+const { emitQueueEvent } = require("../utils/socketEvents");
 
 const register = async (req, res) => {
   try {
@@ -129,4 +139,160 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { register, login };
+const deleteMyAccount = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "Account not found" });
+    }
+
+    if (!["doctor", "patient"].includes(user.role)) {
+      return res.status(403).json({
+        message: "Only doctor and patient accounts can be deleted here",
+      });
+    }
+
+    const affectedDoctorIds = new Set();
+    const affectedPatientIds = new Set();
+
+    await sequelize.transaction(async (transaction) => {
+      if (user.role === "doctor") {
+        const doctor = await Doctor.findOne({
+          where: { user_id: user.id },
+          transaction,
+        });
+
+        if (doctor) {
+          affectedDoctorIds.add(doctor.id);
+
+          const appointments = await Appointment.findAll({
+            attributes: ["id"],
+            where: { doctor_id: doctor.id },
+            transaction,
+          });
+          const appointmentIds = appointments.map((appointment) => appointment.id);
+
+          const queueWhere = appointmentIds.length
+            ? {
+                [Op.or]: [
+                  { doctor_id: doctor.id },
+                  { appointment_id: { [Op.in]: appointmentIds } },
+                ],
+              }
+            : { doctor_id: doctor.id };
+
+          const queueRecords = await Queue.findAll({
+            attributes: ["doctor_id", "patient_id"],
+            where: queueWhere,
+            transaction,
+          });
+
+          queueRecords.forEach((queue) => {
+            if (queue.doctor_id) {
+              affectedDoctorIds.add(queue.doctor_id);
+            }
+            if (queue.patient_id) {
+              affectedPatientIds.add(queue.patient_id);
+            }
+          });
+
+          await Queue.destroy({ where: queueWhere, transaction });
+
+          if (appointmentIds.length) {
+            await Appointment.destroy({
+              where: { id: { [Op.in]: appointmentIds } },
+              transaction,
+            });
+          }
+
+          await Doctor.destroy({ where: { id: doctor.id }, transaction });
+        }
+
+        await PatientProfile.destroy({
+          where: { user_id: user.id },
+          transaction,
+        });
+      }
+
+      if (user.role === "patient") {
+        affectedPatientIds.add(user.id);
+
+        const appointments = await Appointment.findAll({
+          attributes: ["id"],
+          where: { patient_id: user.id },
+          transaction,
+        });
+        const appointmentIds = appointments.map((appointment) => appointment.id);
+
+        const queueWhere = appointmentIds.length
+          ? {
+              [Op.or]: [
+                { patient_id: user.id },
+                { appointment_id: { [Op.in]: appointmentIds } },
+              ],
+            }
+          : { patient_id: user.id };
+
+        const queueRecords = await Queue.findAll({
+          attributes: ["doctor_id", "patient_id"],
+          where: queueWhere,
+          transaction,
+        });
+
+        queueRecords.forEach((queue) => {
+          if (queue.doctor_id) {
+            affectedDoctorIds.add(queue.doctor_id);
+          }
+          if (queue.patient_id) {
+            affectedPatientIds.add(queue.patient_id);
+          }
+        });
+
+        await Queue.destroy({ where: queueWhere, transaction });
+
+        if (appointmentIds.length) {
+          await Appointment.destroy({
+            where: { id: { [Op.in]: appointmentIds } },
+            transaction,
+          });
+        }
+
+        await PatientProfile.destroy({
+          where: { user_id: user.id },
+          transaction,
+        });
+      }
+
+      await User.destroy({ where: { id: user.id }, transaction });
+    });
+
+    const rooms = [
+      "role:staff",
+      "role:admin",
+      ...Array.from(affectedDoctorIds).map((doctorId) => `doctor:${doctorId}`),
+      ...Array.from(affectedPatientIds).map((patientId) => `patient:${patientId}`),
+    ];
+
+    emitQueueEvent(
+      req.app,
+      "queue:refresh",
+      {
+        deletedUserId: user.id,
+        deletedRole: user.role,
+      },
+      { rooms },
+    );
+
+    res.json({
+      message: `${
+        user.role === "doctor" ? "Doctor" : "Patient"
+      } account deleted successfully`,
+    });
+  } catch (error) {
+    console.error("Delete account error:", error);
+    res.status(500).json({ message: "Server error while deleting account" });
+  }
+};
+
+module.exports = { register, login, deleteMyAccount };
