@@ -15,6 +15,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
+import DashboardSectionMenu from "../../components/DashboardSectionMenu";
 import Modal from "../../components/Modal";
 import NotificationPanel from "../../components/NotificationPanel";
 import api from "../../lib/api";
@@ -78,6 +79,14 @@ export default function StaffDashboard() {
     cancelText: undefined,
     onConfirm: null,
   });
+
+  const staffSections = [
+    ["queue", "Live Queue"],
+    ["appointments", "Appointments"],
+    ["reports", "Reports"],
+    ["doctors", "Doctors"],
+    ["departments", "Departments"],
+  ];
 
   const openDialog = ({
     title,
@@ -481,13 +490,13 @@ export default function StaffDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-teal-50 p-6">
+    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-10">
+        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <Building className="w-12 h-12 text-teal-600" />
+            <Building className="h-10 w-10 text-teal-600 sm:h-12 sm:w-12" />
             <div>
-              <h1 className="text-4xl font-bold text-teal-900">
+              <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
                 Staff Operations
               </h1>
               <p className="text-teal-600 mt-1">
@@ -497,19 +506,20 @@ export default function StaffDashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-medium transition-all">
+            className="rounded-2xl bg-red-600 px-6 py-3 font-medium text-white transition-all hover:bg-red-700">
             Logout
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-3 border-b mb-8">
-          {[
-            ["queue", "Live Queue"],
-            ["appointments", "Appointments"],
-            ["departments", "Departments"],
-            ["doctors", "Doctors"],
-            ["reports", "Reports"],
-          ].map(([value, label]) => (
+        <DashboardSectionMenu
+          title="Staff Menu"
+          sections={staffSections.map(([value, label]) => ({ value, label }))}
+          activeSection={activeTab}
+          onSelect={setActiveTab}
+        />
+
+        <div className="mb-8 hidden flex-wrap gap-3 border-b md:flex">
+          {staffSections.map(([value, label]) => (
             <button
               key={value}
               onClick={() => setActiveTab(value)}

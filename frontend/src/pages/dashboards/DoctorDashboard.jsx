@@ -18,6 +18,7 @@ import {
   Trash2,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
+import DashboardSectionMenu from "../../components/DashboardSectionMenu";
 import Modal from "../../components/Modal";
 import NotificationPanel from "../../components/NotificationPanel";
 import api from "../../lib/api";
@@ -52,6 +53,9 @@ export default function DoctorDashboard() {
   const [departments, setDepartments] = useState([]);
   const [availabilityRows, setAvailabilityRows] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [activeMobileSection, setActiveMobileSection] = useState("consultation");
+  const [hasInitializedMobileSection, setHasInitializedMobileSection] =
+    useState(false);
   const [loading, setLoading] = useState(true);
   const [workingAction, setWorkingAction] = useState("");
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -100,8 +104,13 @@ export default function DoctorDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const [doctorRes, queueRes, departmentRes, availabilityRes, notificationsRes] =
-        await Promise.all([
+      const [
+        doctorRes,
+        queueRes,
+        departmentRes,
+        availabilityRes,
+        notificationsRes,
+      ] = await Promise.all([
         api.get("/doctors/me"),
         api.get("/queue/doctor/me"),
         api.get("/departments"),
@@ -149,6 +158,35 @@ export default function DoctorDashboard() {
   useEffect(() => {
     fetchDashboard();
   }, []);
+
+  useEffect(() => {
+    if (hasInitializedMobileSection) {
+      return;
+    }
+
+    if (activeQueue) {
+      setActiveMobileSection("consultation");
+      setHasInitializedMobileSection(true);
+      return;
+    }
+
+    if (queue.length > 0) {
+      setActiveMobileSection("queue");
+      setHasInitializedMobileSection(true);
+      return;
+    }
+
+    if (availabilityRows.length > 0 || departments.length > 0) {
+      setActiveMobileSection("availability");
+      setHasInitializedMobileSection(true);
+    }
+  }, [
+    activeQueue,
+    queue.length,
+    availabilityRows.length,
+    departments.length,
+    hasInitializedMobileSection,
+  ]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -401,12 +439,19 @@ export default function DoctorDashboard() {
     )}`;
   };
 
+  const doctorSections = [
+    { value: "consultation", label: "Current Consultation" },
+    { value: "queue", label: "Queue Overview" },
+    { value: "availability", label: "Weekly Availability" },
+    { value: "alerts", label: "Notifications" },
+  ];
+
   return (
-    <div className="min-h-screen bg-teal-50 p-6">
+    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-10">
+        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-teal-900">
+            <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
               Doctor Dashboard
             </h1>
             <p className="text-teal-600 mt-1">
@@ -415,12 +460,19 @@ export default function DoctorDashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700">
+            className="rounded-2xl bg-red-600 px-6 py-3 text-white hover:bg-red-700">
             <span className="inline-flex items-center gap-2">
               <LogOut size={18} /> Logout
             </span>
           </button>
         </div>
+
+        <DashboardSectionMenu
+          title="Doctor Menu"
+          sections={doctorSections}
+          activeSection={activeMobileSection}
+          onSelect={setActiveMobileSection}
+        />
 
         {loading ? (
           <div className="medical-card p-10 text-center text-gray-500">
@@ -430,8 +482,13 @@ export default function DoctorDashboard() {
           <div className="space-y-8">
             <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
               <div className="space-y-6">
-            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="medical-card p-8">
+            <div
+              className={`gap-6 lg:grid-cols-[1.1fr_0.9fr] ${
+                activeMobileSection === "consultation"
+                  ? "grid"
+                  : "hidden md:grid"
+              }`}>
+              <div className="medical-card p-6 sm:p-8">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm uppercase tracking-[0.3em] text-teal-600">
@@ -473,7 +530,7 @@ export default function DoctorDashboard() {
                 </div>
               </div>
 
-              <div className="medical-card p-8">
+              <div className="medical-card p-6 sm:p-8">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm uppercase tracking-[0.3em] text-teal-600">
@@ -606,7 +663,12 @@ export default function DoctorDashboard() {
               </div>
             </div>
 
-            <div className="medical-card p-8">
+            <div
+              className={`medical-card p-6 sm:p-8 ${
+                activeMobileSection === "availability"
+                  ? "block"
+                  : "hidden md:block"
+              }`}>
               <div className="mb-6 flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-semibold">Weekly Availability</h2>
@@ -697,7 +759,10 @@ export default function DoctorDashboard() {
               </button>
             </div>
 
-            <div className="medical-card p-8">
+            <div
+              className={`medical-card p-6 sm:p-8 ${
+                activeMobileSection === "queue" ? "block" : "hidden md:block"
+              }`}>
               <div className="flex items-center justify-between gap-4 mb-6">
                 <h2 className="text-2xl font-semibold">Queue Overview</h2>
                 <p className="text-sm text-gray-500">
@@ -797,7 +862,10 @@ export default function DoctorDashboard() {
             </div>
               </div>
 
-              <div className="space-y-6">
+              <div
+                className={`space-y-6 ${
+                  activeMobileSection === "alerts" ? "block" : "hidden md:block"
+                }`}>
                 <NotificationPanel
                   notifications={notifications}
                   title="Doctor Notifications"

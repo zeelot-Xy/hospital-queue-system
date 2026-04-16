@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
+import DashboardSectionMenu from "../../components/DashboardSectionMenu";
 import NotificationPanel from "../../components/NotificationPanel";
 import api from "../../lib/api";
 import { formatQueueStatus, queueStatusStyles } from "../../lib/queue";
@@ -45,6 +46,7 @@ export default function PatientDashboard() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const [activeTab, setActiveTab] = useState("book");
+  const [hasInitializedMobileTab, setHasInitializedMobileTab] = useState(false);
   const [departments, setDepartments] = useState([]);
   const [selectedDept, setSelectedDept] = useState(null);
   const [doctors, setDoctors] = useState([]);
@@ -185,6 +187,29 @@ export default function PatientDashboard() {
     fetchVisitHistory();
     fetchNotifications();
   }, []);
+
+  useEffect(() => {
+    if (hasInitializedMobileTab) {
+      return;
+    }
+
+    if (currentQueue) {
+      setActiveTab("queue");
+      setHasInitializedMobileTab(true);
+      return;
+    }
+
+    if (myAppointments.length > 0) {
+      setActiveTab("appointments");
+      setHasInitializedMobileTab(true);
+      return;
+    }
+
+    if (departments.length > 0) {
+      setActiveTab("book");
+      setHasInitializedMobileTab(true);
+    }
+  }, [currentQueue, myAppointments.length, departments.length, hasInitializedMobileTab]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -365,12 +390,43 @@ export default function PatientDashboard() {
     });
   };
 
+  const patientSections = [
+    ["queue", "Queue Status"],
+    ["book", "Book Appointment"],
+    ["appointments", "My Appointments"],
+    ["profile", "My Profile"],
+    ["history", "Visit History"],
+  ];
+
+  const renderDesktopTabs = () => (
+    <div className="mb-8 hidden flex-wrap gap-3 border-b md:flex">
+      {patientSections.map(([value, label]) => (
+        <button
+          key={value}
+          onClick={() => {
+            setActiveTab(value);
+            if (value === "appointments") fetchMyAppointments();
+            if (value === "queue") fetchQueueStatus();
+            if (value === "history") fetchVisitHistory();
+          }}
+          className={`border-b-4 px-6 py-4 text-lg font-semibold transition-all ${
+            activeTab === value
+              ? "border-teal-600 text-teal-700"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-teal-50 p-6">
+    <div className="min-h-screen bg-teal-50 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-10">
+        <div className="mb-8 flex flex-col gap-4 md:mb-10 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-teal-900">
+            <h1 className="text-3xl font-bold text-teal-900 sm:text-4xl">
               Welcome, {user.full_name}
             </h1>
             <p className="text-teal-600 mt-1">
@@ -379,36 +435,23 @@ export default function PatientDashboard() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-medium">
+            className="flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700 md:w-auto">
             <LogOut size={20} /> Logout
           </button>
         </div>
 
-        <div className="mb-8 flex flex-wrap gap-3 border-b">
-          {[
-            ["book", "Book Appointment"],
-            ["appointments", "My Appointments"],
-            ["queue", "Queue Status"],
-            ["history", "Visit History"],
-            ["profile", "My Profile"],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => {
-                setActiveTab(value);
-                if (value === "appointments") fetchMyAppointments();
-                if (value === "queue") fetchQueueStatus();
-                if (value === "history") fetchVisitHistory();
-              }}
-              className={`px-6 py-4 font-semibold text-lg border-b-4 transition-all ${
-                activeTab === value
-                  ? "border-teal-600 text-teal-700"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <DashboardSectionMenu
+          title="Patient Menu"
+          sections={patientSections.map(([value, label]) => ({ value, label }))}
+          activeSection={activeTab}
+          onSelect={(value) => {
+            setActiveTab(value);
+            if (value === "appointments") fetchMyAppointments();
+            if (value === "queue") fetchQueueStatus();
+            if (value === "history") fetchVisitHistory();
+          }}
+        />
+        {renderDesktopTabs()}
 
         {activeTab === "book" && (
           <div className="space-y-8">
@@ -426,7 +469,7 @@ export default function PatientDashboard() {
               </div>
             )}
 
-            <div className="medical-card p-8">
+            <div className="medical-card p-6 sm:p-8">
               <h2 className="text-2xl font-semibold mb-6 flex items-center gap-3">
                 <Calendar className="text-teal-600" /> Select Department
               </h2>
@@ -453,7 +496,7 @@ export default function PatientDashboard() {
             </div>
 
             {selectedDept && (
-              <div className="medical-card p-8">
+              <div className="medical-card p-6 sm:p-8">
                 <h2 className="text-2xl font-semibold mb-6">
                   Book in <span className="text-teal-600">{selectedDept.name}</span>
                 </h2>
@@ -499,7 +542,7 @@ export default function PatientDashboard() {
                       </p>
                     </div>
 
-                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:col-span-2 md:grid-cols-2">
                       {doctors.map((doctor) => (
                         <button
                           key={doctor.id}
@@ -510,7 +553,7 @@ export default function PatientDashboard() {
                               doctor_id: String(doctor.id),
                             }))
                           }
-                          className={`border rounded-3xl p-6 text-left transition-all ${
+                          className={`border rounded-3xl p-5 sm:p-6 text-left transition-all ${
                             bookingForm.doctor_id === String(doctor.id)
                               ? "border-teal-600 bg-teal-50 shadow"
                               : "border-gray-200 hover:border-teal-500"
@@ -595,7 +638,7 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "appointments" && (
-          <div className="medical-card p-8">
+          <div className="medical-card p-6 sm:p-8">
             <h2 className="text-2xl font-semibold mb-6">My Appointments</h2>
 
             {myAppointments.length === 0 ? (
@@ -607,7 +650,7 @@ export default function PatientDashboard() {
                 {myAppointments.map((appointment) => (
                   <div
                     key={appointment.id}
-                    className="border border-gray-200 rounded-3xl p-6 flex flex-col md:flex-row justify-between gap-6">
+                    className="border border-gray-200 rounded-3xl p-5 sm:p-6 flex flex-col gap-6 md:flex-row md:justify-between">
                     <div>
                       <p className="font-semibold text-lg">
                         Dr. {appointment.Doctor?.User?.full_name}
@@ -619,7 +662,7 @@ export default function PatientDashboard() {
                       </p>
                     </div>
 
-                    <div className="flex flex-col items-end gap-3">
+                    <div className="flex flex-col gap-3 md:items-end">
                       {appointment.status === "booked" && (
                         <button
                           onClick={() => handleMarkArrived(appointment)}
@@ -651,7 +694,7 @@ export default function PatientDashboard() {
                 </p>
               </div>
             )}
-          <div className="medical-card p-8">
+          <div className="medical-card p-6 sm:p-8">
             <h2 className="text-2xl font-semibold mb-6">My Queue Status</h2>
 
             {!currentQueue ? (
@@ -660,7 +703,7 @@ export default function PatientDashboard() {
               </p>
             ) : (
               <div className="grid gap-6 md:grid-cols-2">
-                <div className="rounded-3xl bg-teal-600 text-white p-8">
+                <div className="rounded-3xl bg-teal-600 p-6 text-white sm:p-8">
                   <p className="text-sm uppercase tracking-[0.3em] opacity-80">
                     Queue Number
                   </p>
@@ -670,7 +713,7 @@ export default function PatientDashboard() {
                   </span>
                 </div>
 
-                <div className="border border-gray-200 rounded-3xl p-8 space-y-5">
+                <div className="space-y-5 rounded-3xl border border-gray-200 p-6 sm:p-8">
                   <div className="flex items-start gap-3">
                     <Stethoscope className="text-teal-600 mt-1" />
                     <div>
@@ -724,7 +767,7 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "history" && (
-          <div className="medical-card p-8">
+          <div className="medical-card p-6 sm:p-8">
             <div className="mb-6 flex items-center gap-3">
               <FileText className="text-teal-600" />
               <div>
@@ -742,7 +785,7 @@ export default function PatientDashboard() {
             ) : (
               <div className="space-y-4">
                 {visitHistory.map((record) => (
-                  <div key={record.id} className="rounded-3xl border border-gray-200 p-6">
+                  <div key={record.id} className="rounded-3xl border border-gray-200 p-5 sm:p-6">
                     <p className="font-semibold text-lg text-teal-900">
                       {record.Appointment?.Doctor?.User?.full_name
                         ? `Dr. ${record.Appointment.Doctor.User.full_name}`
@@ -766,7 +809,7 @@ export default function PatientDashboard() {
         )}
 
         {activeTab === "profile" && (
-          <div className="medical-card p-8 space-y-8">
+          <div className="medical-card space-y-8 p-6 sm:p-8">
             <div>
               <h2 className="text-2xl font-semibold">My Medical Profile</h2>
               <p className="text-gray-600 mt-2">
