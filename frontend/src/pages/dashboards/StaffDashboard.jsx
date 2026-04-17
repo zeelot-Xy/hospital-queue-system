@@ -531,6 +531,7 @@ export default function StaffDashboard() {
       account.full_name,
       account.email,
       account.phone,
+      account.specialization,
       String(account.id),
     ]
       .filter(Boolean)
@@ -1150,7 +1151,7 @@ export default function StaffDashboard() {
                 value={doctorSearch}
                 onChange={(e) => setDoctorSearch(e.target.value)}
                 className="w-full rounded-2xl border border-gray-300 py-4 pl-12 pr-5 focus:border-teal-600 focus:outline-none"
-                placeholder="Search by name, email, phone, or ID"
+                placeholder="Search by name, specialization, email, phone, or ID"
               />
             </div>
             <p className="mt-2 text-sm text-gray-500">
@@ -1176,6 +1177,8 @@ export default function StaffDashboard() {
                         setDoctorForm((current) => ({
                           ...current,
                           user_id: String(account.id),
+                          specialization:
+                            current.specialization || account.specialization || "",
                         }))
                       }
                       className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
@@ -1190,6 +1193,9 @@ export default function StaffDashboard() {
                             {account.full_name}
                           </p>
                           <p className="mt-1 text-sm text-gray-500">{account.email}</p>
+                          <p className="mt-1 text-sm text-teal-700">
+                            {account.specialization || "General Medicine"}
+                          </p>
                           <p className="mt-1 text-sm text-gray-500">
                             {account.phone || "No phone added"}
                           </p>

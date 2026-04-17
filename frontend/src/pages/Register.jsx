@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Phone, Stethoscope, Users } from "lucide-react";
 import api from "../lib/api";
@@ -12,33 +12,11 @@ export default function Register() {
     password: "",
     role: "patient",
     specialization: "",
-    department_id: "",
   });
-  const [departments, setDepartments] = useState([]);
-  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      setLoadingDepartments(true);
-      try {
-        const res = await api.get("/departments");
-        const activeDepartments = res.data.filter(
-          (department) => department.status !== "inactive",
-        );
-        setDepartments(activeDepartments.length > 0 ? activeDepartments : res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingDepartments(false);
-      }
-    };
-
-    fetchDepartments();
-  }, []);
 
   const handleChange = (e) => {
     setFormData((current) => ({
@@ -52,7 +30,6 @@ export default function Register() {
       ...current,
       role,
       specialization: role === "doctor" ? current.specialization : "",
-      department_id: role === "doctor" ? current.department_id : "",
     }));
   };
 
@@ -67,11 +44,6 @@ export default function Register() {
 
       if (payload.role !== "doctor") {
         delete payload.specialization;
-        delete payload.department_id;
-      } else if (!payload.department_id) {
-        setError("Please select a department for the doctor account.");
-        setLoading(false);
-        return;
       }
 
       await api.post("/auth/register", payload);
@@ -214,37 +186,8 @@ export default function Register() {
                   required
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Department
-                </label>
-                <select
-                  name="department_id"
-                  value={formData.department_id}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-                  disabled={loadingDepartments || departments.length === 0}
-                  required
-                >
-                  <option value="">
-                    {loadingDepartments
-                      ? "Loading departments..."
-                      : departments.length === 0
-                        ? "No departments available"
-                        : "Select a department"}
-                  </option>
-                  {departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
-                {!loadingDepartments && departments.length === 0 && (
-                  <p className="mt-2 text-sm text-amber-700">
-                    Departments must be created before a doctor account can be registered.
-                  </p>
-                )}
+              <div className="rounded-2xl border border-teal-100 bg-teal-50 px-4 py-4 text-sm text-teal-900">
+                Staff will assign your department after registration.
               </div>
             </>
           )}

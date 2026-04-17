@@ -6,6 +6,11 @@ const { logAudit } = require("../utils/auditLogger");
 const getAllDoctors = async (req, res) => {
   try {
     const doctors = await Doctor.findAll({
+      where: {
+        department_id: {
+          [Op.not]: null,
+        },
+      },
       include: doctorInclude,
       order: [["createdAt", "DESC"]],
     });
@@ -18,28 +23,32 @@ const getAllDoctors = async (req, res) => {
 const getEligibleDoctorAccounts = async (req, res) => {
   try {
     const doctors = await Doctor.findAll({
-      attributes: ["user_id"],
+      attributes: ["user_id", "department_id", "specialization"],
     });
-    const assignedUserIds = doctors.map((doctor) => doctor.user_id);
-
-    const where = {
-      role: "doctor",
-    };
-
-    if (assignedUserIds.length > 0) {
-      where.id = {
-        [Op.notIn]: assignedUserIds,
-      };
-    }
+    const doctorMap = new Map(doctors.map((doctor) => [doctor.user_id, doctor]));
 
     const eligibleUsers = await User.findAll({
-      where,
+      where: {
+        role: "doctor",
+      },
       attributes: ["id", "full_name", "email", "phone"],
       order: [["full_name", "ASC"]],
     });
 
     res.json({
-      users: eligibleUsers,
+      users: eligibleUsers
+        .filter((user) => {
+          const doctor = doctorMap.get(user.id);
+          return !doctor || !doctor.department_id;
+        })
+        .map((user) => ({
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          phone: user.phone,
+          specialization:
+            doctorMap.get(user.id)?.specialization || "General Medicine",
+        })),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -141,17 +150,26 @@ const createDoctor = async (req, res) => {
       return res.status(404).json({ message: "Department not found" });
     }
 
-    if (existingDoctor) {
+    if (existingDoctor?.department_id) {
       return res
         .status(400)
-        .json({ message: "This user already has a doctor profile" });
+        .json({ message: "This doctor account has already been assigned" });
     }
 
-    const doctor = await Doctor.create({
-      user_id,
-      department_id,
-      specialization: specialization.trim(),
-    });
+    let doctor = existingDoctor;
+
+    if (doctor) {
+      await doctor.update({
+        department_id,
+        specialization: specialization.trim(),
+      });
+    } else {
+      doctor = await Doctor.create({
+        user_id,
+        department_id,
+        specialization: specialization.trim(),
+      });
+    }
 
     const createdDoctor = await Doctor.findByPk(doctor.id, {
       include: doctorInclude,

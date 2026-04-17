@@ -5,7 +5,6 @@ const {
   sequelize,
   User,
   Doctor,
-  Department,
   Appointment,
   Queue,
   PatientProfile,
@@ -25,7 +24,6 @@ const register = async (req, res) => {
       password,
       role,
       specialization,
-      department_id,
     } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
 
@@ -54,22 +52,9 @@ const register = async (req, res) => {
     });
 
     if (role === "doctor") {
-      if (!department_id) {
-        return res.status(400).json({
-          message: "Department ID is required for doctor registration",
-        });
-      }
-
-      const departmentExists = await Department.findByPk(department_id);
-      if (!departmentExists) {
-        return res.status(400).json({
-          message: `Department with ID ${department_id} does not exist. Please create departments first.`,
-        });
-      }
-
       await Doctor.create({
         user_id: user.id,
-        department_id: parseInt(department_id, 10),
+        department_id: null,
         specialization: specialization || "General Medicine",
       });
     }

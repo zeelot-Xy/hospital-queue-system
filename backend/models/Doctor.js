@@ -15,7 +15,7 @@ module.exports = (sequelize) => {
       },
       department_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
       },
       specialization: {
         type: DataTypes.STRING,
