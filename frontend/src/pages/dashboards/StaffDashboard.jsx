@@ -9,7 +9,7 @@ import {
   FileText,
   Loader,
   Plus,
-  RefreshCcw,
+  Search,
   Trash2,
   TriangleAlert,
   UserRoundPlus,
@@ -50,6 +50,8 @@ export default function StaffDashboard() {
     department_id: "",
     specialization: "",
   });
+  const [eligibleDoctorUsers, setEligibleDoctorUsers] = useState([]);
+  const [doctorSearch, setDoctorSearch] = useState("");
   const [walkInForm, setWalkInForm] = useState({
     full_name: "",
     phone: "",
@@ -118,6 +120,11 @@ export default function StaffDashboard() {
     ]);
     setDepartments(deptRes.data);
     setDoctors(docRes.data);
+  };
+
+  const fetchEligibleDoctorUsers = async () => {
+    const res = await api.get("/doctors/eligible-users");
+    setEligibleDoctorUsers(res.data.users || []);
   };
 
   const fetchQueueBoard = async () => {
@@ -216,6 +223,28 @@ export default function StaffDashboard() {
     setShowDeptModal(true);
   };
 
+  const openDoctorModal = async () => {
+    setDoctorForm({
+      user_id: "",
+      department_id: "",
+      specialization: "",
+    });
+    setDoctorSearch("");
+
+    try {
+      await fetchEligibleDoctorUsers();
+      setShowDoctorModal(true);
+    } catch (err) {
+      openDialog({
+        title: "Doctor Accounts Unavailable",
+        message:
+          err.response?.data?.message ||
+          "Could not load registered doctor accounts right now.",
+        variant: "error",
+      });
+    }
+  };
+
   const handleDeptSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -284,10 +313,12 @@ export default function StaffDashboard() {
       });
       setShowDoctorModal(false);
       setDoctorForm({ user_id: "", department_id: "", specialization: "" });
+      setDoctorSearch("");
+      setEligibleDoctorUsers([]);
       await fetchManagementData();
       openDialog({
         title: "Doctor Added",
-        message: "Doctor added successfully.",
+        message: "Doctor account assigned successfully.",
         variant: "success",
       });
     } catch (err) {
@@ -488,6 +519,26 @@ export default function StaffDashboard() {
     disconnectSocket();
     navigate("/login");
   };
+
+  const filteredEligibleDoctorUsers = eligibleDoctorUsers.filter((account) => {
+    const searchTerm = doctorSearch.trim().toLowerCase();
+
+    if (!searchTerm) {
+      return true;
+    }
+
+    const haystack = [
+      account.full_name,
+      account.email,
+      account.phone,
+      String(account.id),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(searchTerm);
+  });
 
   return (
     <div className="min-h-screen bg-teal-50 p-3 sm:p-6">
@@ -882,7 +933,7 @@ export default function StaffDashboard() {
                     All Doctors ({doctors.length})
                   </h2>
                   <button
-                    onClick={() => setShowDoctorModal(true)}
+                    onClick={openDoctorModal}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-teal-600 px-6 py-3 font-medium text-white transition-all hover:bg-teal-700 sm:w-auto">
                     <UserRoundPlus size={20} /> Add New Doctor
                   </button>
@@ -1082,23 +1133,76 @@ export default function StaffDashboard() {
 
       <Modal
         isOpen={showDoctorModal}
-        onClose={() => setShowDoctorModal(false)}
-        title="Add New Doctor">
+        onClose={() => {
+          setShowDoctorModal(false);
+          setDoctorSearch("");
+        }}
+        title="Assign Registered Doctor">
         <form onSubmit={handleCreateDoctor} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              User ID
+              Doctor Account
             </label>
-            <input
-              type="number"
-              value={doctorForm.user_id}
-              onChange={(e) =>
-                setDoctorForm((current) => ({ ...current, user_id: e.target.value }))
-              }
-              className="w-full px-5 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-              placeholder="Enter registered doctor user ID"
-              required
-            />
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-4 h-5 w-5 text-teal-500" />
+              <input
+                type="text"
+                value={doctorSearch}
+                onChange={(e) => setDoctorSearch(e.target.value)}
+                className="w-full rounded-2xl border border-gray-300 py-4 pl-12 pr-5 focus:border-teal-600 focus:outline-none"
+                placeholder="Search by name, email, phone, or ID"
+              />
+            </div>
+            <p className="mt-2 text-sm text-gray-500">
+              Select a registered doctor account. The doctor must register first.
+            </p>
+            <div className="mt-3 max-h-72 space-y-3 overflow-y-auto rounded-3xl border border-gray-200 bg-slate-50 p-3">
+              {eligibleDoctorUsers.length === 0 ? (
+                <div className="rounded-2xl bg-white px-4 py-5 text-sm text-gray-600">
+                  No eligible doctor accounts are available yet. Ask the doctor to register first.
+                </div>
+              ) : filteredEligibleDoctorUsers.length === 0 ? (
+                <div className="rounded-2xl bg-white px-4 py-5 text-sm text-gray-600">
+                  No registered doctor account matches your search.
+                </div>
+              ) : (
+                filteredEligibleDoctorUsers.map((account) => {
+                  const isSelected = doctorForm.user_id === String(account.id);
+                  return (
+                    <button
+                      key={account.id}
+                      type="button"
+                      onClick={() =>
+                        setDoctorForm((current) => ({
+                          ...current,
+                          user_id: String(account.id),
+                        }))
+                      }
+                      className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
+                        isSelected
+                          ? "border-teal-600 bg-teal-50 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-teal-400 hover:bg-teal-50/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-semibold text-teal-900">
+                            {account.full_name}
+                          </p>
+                          <p className="mt-1 text-sm text-gray-500">{account.email}</p>
+                          <p className="mt-1 text-sm text-gray-500">
+                            {account.phone || "No phone added"}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                          ID {account.id}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1142,9 +1246,9 @@ export default function StaffDashboard() {
           </div>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !doctorForm.user_id}
             className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white py-4 rounded-2xl font-semibold text-lg transition-all">
-            {submitting ? "Adding Doctor..." : "Add Doctor"}
+            {submitting ? "Assigning Doctor..." : "Assign Doctor"}
           </button>
         </form>
       </Modal>

@@ -497,6 +497,9 @@ export default function DoctorDashboard() {
                     <h2 className="mt-2 text-2xl font-bold text-teal-900 sm:text-3xl">
                       Dr. {doctorProfile?.User?.full_name || user.full_name}
                     </h2>
+                    <p className="mt-2 text-sm font-medium text-teal-700">
+                      Doctor ID: {doctorProfile?.user_id || user.id || "Not available"}
+                    </p>
                     <p className="text-gray-600 mt-2">
                       {doctorProfile?.specialization || "General Practice"}
                       {" - "}
@@ -961,6 +964,10 @@ export default function DoctorDashboard() {
         onClose={() => setShowProfileModal(false)}
         title="Edit Doctor Profile">
         <form onSubmit={handleProfileSave} className="space-y-5">
+          <div className="rounded-2xl bg-slate-50 px-4 py-4 text-sm text-gray-700">
+            <span className="font-semibold text-teal-900">Doctor ID:</span>{" "}
+            {doctorProfile?.user_id || user.id || "Not available"}
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Full Name

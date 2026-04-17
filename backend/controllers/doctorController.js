@@ -1,3 +1,4 @@
+const { Op } = require("sequelize");
 const { Doctor, User, Department } = require("../models/index");
 const { doctorInclude, getDoctorByUserId } = require("../utils/doctorUtils");
 const { logAudit } = require("../utils/auditLogger");
@@ -9,6 +10,37 @@ const getAllDoctors = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
     res.json(doctors);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getEligibleDoctorAccounts = async (req, res) => {
+  try {
+    const doctors = await Doctor.findAll({
+      attributes: ["user_id"],
+    });
+    const assignedUserIds = doctors.map((doctor) => doctor.user_id);
+
+    const where = {
+      role: "doctor",
+    };
+
+    if (assignedUserIds.length > 0) {
+      where.id = {
+        [Op.notIn]: assignedUserIds,
+      };
+    }
+
+    const eligibleUsers = await User.findAll({
+      where,
+      attributes: ["id", "full_name", "email", "phone"],
+      order: [["full_name", "ASC"]],
+    });
+
+    res.json({
+      users: eligibleUsers,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -144,6 +176,7 @@ const createDoctor = async (req, res) => {
 
 module.exports = {
   getAllDoctors,
+  getEligibleDoctorAccounts,
   getMyDoctorProfile,
   updateMyDoctorProfile,
   createDoctor,

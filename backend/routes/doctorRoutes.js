@@ -5,6 +5,7 @@ const {
 } = require("../middleware/authMiddleware");
 const {
   getAllDoctors,
+  getEligibleDoctorAccounts,
   getMyDoctorProfile,
   updateMyDoctorProfile,
   createDoctor,
@@ -29,6 +30,12 @@ router.get(
   authenticateToken,
   authorizeRole("staff", "admin"),
   getAllDoctors,
+);
+router.get(
+  "/eligible-users",
+  authenticateToken,
+  authorizeRole("staff", "admin"),
+  getEligibleDoctorAccounts,
 );
 router.post(
   "/",
