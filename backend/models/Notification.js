@@ -11,7 +11,7 @@ module.exports = (sequelize) => {
       },
       recipient_user_id: {
         type: DataTypes.INTEGER,
-        allowNull: true,
+        allowNull: false,
       },
       recipient_role: {
         type: DataTypes.STRING,

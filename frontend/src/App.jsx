@@ -7,8 +7,8 @@ import {
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
+import EvaluationGuide from "./components/EvaluationGuide";
 
-// Simple dashboard placeholders
 import PatientDashboard from "./pages/dashboards/PatientDashboard";
 import DoctorDashboard from "./pages/dashboards/DoctorDashboard";
 import StaffDashboard from "./pages/dashboards/StaffDashboard";
@@ -16,6 +16,7 @@ import StaffDashboard from "./pages/dashboards/StaffDashboard";
 function App() {
   return (
     <Router>
+      <EvaluationGuide />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

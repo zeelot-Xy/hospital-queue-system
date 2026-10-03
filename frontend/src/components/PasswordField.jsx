@@ -8,6 +8,7 @@ export default function PasswordField({
   onChange,
   placeholder,
   required = false,
+  minLength,
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const inputId = useId();
@@ -30,6 +31,7 @@ export default function PasswordField({
           className="w-full pl-11 pr-12 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
           placeholder={placeholder}
           required={required}
+          minLength={minLength}
         />
         <button
           type="button"

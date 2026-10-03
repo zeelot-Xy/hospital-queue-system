@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const {
+  sequelize,
   Appointment,
   Queue,
   Department,
@@ -113,11 +114,17 @@ const getQueueById = (id) =>
     include: queueInclude,
   });
 
-const syncAppointmentStatus = async (appointmentId, status, extraFields = {}) => {
+const syncAppointmentStatus = async (
+  appointmentId,
+  status,
+  extraFields = {},
+  transaction,
+) => {
   await Appointment.update(
     { status, ...extraFields },
     {
       where: { id: appointmentId },
+      transaction,
     },
   );
 };
@@ -205,65 +212,90 @@ const markAsArrived = async (req, res) => {
       return res.status(400).json({ message: "Appointment is required" });
     }
 
-    const appointment = await Appointment.findOne({
-      where: {
-        id: appointment_id,
-        patient_id: req.user.id,
-        status: "booked",
-      },
-    });
-
-    if (!appointment) {
-      return res
-        .status(400)
-        .json({ message: "Appointment not found or already processed" });
-    }
-
-    const existingQueue = await Queue.findOne({
-      where: { appointment_id },
-    });
-
-    if (existingQueue) {
-      return res.status(400).json({ message: "You have already joined the queue" });
-    }
-
-    const appointmentTime = new Date(
-      `${appointment.appointment_date}T${appointment.appointment_time}`,
-    );
-    const now = new Date();
-    const diffMinutes = Math.abs((now - appointmentTime) / 60000);
-
-    if (!appointment.walk_in && diffMinutes > 30) {
-      return res.status(400).json({
-        message:
-          "You can only mark arrived within 30 minutes of your appointment time",
+    const queue = await sequelize.transaction(async (transaction) => {
+      const appointment = await Appointment.findOne({
+        where: {
+          id: appointment_id,
+          patient_id: req.user.id,
+          status: "booked",
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
-    }
 
-    const lastQueue = await Queue.findOne({
-      where: { doctor_id: appointment.doctor_id },
-      order: [["queue_number", "DESC"]],
-    });
+      if (!appointment) {
+        const error = new Error("Appointment not found or already processed");
+        error.status = 400;
+        throw error;
+      }
 
-    const queue = await Queue.create({
-      appointment_id,
-      patient_id: req.user.id,
-      doctor_id: appointment.doctor_id,
-      department_id: appointment.department_id,
-      queue_number: lastQueue ? lastQueue.queue_number + 1 : 1,
-      status: "waiting",
-      joined_at: now,
-    });
+      const existingQueue = await Queue.findOne({
+        where: { appointment_id },
+        transaction,
+      });
+      if (existingQueue) {
+        const error = new Error("You have already joined the queue");
+        error.status = 400;
+        throw error;
+      }
 
-    await syncAppointmentStatus(appointment.id, "arrived", { arrived_at: now });
-    await logAudit({
-      actorUserId: req.user.id,
-      actionType: "queue.arrived",
-      targetType: "queue",
-      targetId: queue.id,
-      metadata: {
-        appointment_id: appointment.id,
-      },
+      const appointmentTime = new Date(
+        `${appointment.appointment_date}T${appointment.appointment_time}`,
+      );
+      const now = new Date();
+      const diffMinutes = Math.abs((now - appointmentTime) / 60000);
+      if (!appointment.walk_in && diffMinutes > 30) {
+        const error = new Error(
+          "You can only mark arrived within 30 minutes of your appointment time",
+        );
+        error.status = 400;
+        throw error;
+      }
+
+      const lockKey = `queue:${appointment.doctor_id}:${appointment.appointment_date}`;
+      await sequelize.query("SELECT pg_advisory_xact_lock(hashtext(:lockKey))", {
+        replacements: { lockKey },
+        transaction,
+      });
+
+      const lastQueue = await Queue.findOne({
+        where: {
+          doctor_id: appointment.doctor_id,
+          queue_date: appointment.appointment_date,
+        },
+        order: [["queue_number", "DESC"]],
+        transaction,
+      });
+
+      const createdQueue = await Queue.create(
+        {
+          appointment_id,
+          patient_id: req.user.id,
+          doctor_id: appointment.doctor_id,
+          department_id: appointment.department_id,
+          queue_number: lastQueue ? lastQueue.queue_number + 1 : 1,
+          queue_date: appointment.appointment_date,
+          status: "waiting",
+          joined_at: now,
+        },
+        { transaction },
+      );
+
+      await syncAppointmentStatus(
+        appointment.id,
+        "arrived",
+        { arrived_at: now },
+        transaction,
+      );
+      await logAudit({
+        actorUserId: req.user.id,
+        actionType: "queue.arrived",
+        targetType: "queue",
+        targetId: createdQueue.id,
+        metadata: { appointment_id: appointment.id },
+        transaction,
+      });
+      return createdQueue;
     });
 
     const hydratedQueue = await getQueueById(queue.id);
@@ -827,7 +859,10 @@ const transferQueue = async (req, res) => {
     }
 
     const lastQueue = await Queue.findOne({
-      where: { doctor_id: Number(doctor_id) },
+      where: {
+        doctor_id: Number(doctor_id),
+        queue_date: queue.queue_date,
+      },
       order: [["queue_number", "DESC"]],
     });
 

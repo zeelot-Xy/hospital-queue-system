@@ -4,9 +4,9 @@ services:
     container_name: hospital-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: hospital_queue_dev
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: joewest
+      POSTGRES_DB: ${DB_NAME:-hospital_queue_dev}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hospital_queue_dev_password}
     ports:
       - "5432:5432"
     volumes:

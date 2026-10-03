@@ -1,6 +1,4 @@
-require("dotenv").config({
-  path: require("path").resolve(__dirname, "..", ".env"),
-});
+require("../config/env");
 
 const { sequelize } = require("../models");
 

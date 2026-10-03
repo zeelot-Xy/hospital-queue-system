@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BellRing,
@@ -15,6 +15,7 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import AlertDialog from "../../components/AlertDialog";
+import AdminAccountPanel from "../../components/AdminAccountPanel";
 import DashboardSectionMenu from "../../components/DashboardSectionMenu";
 import Modal from "../../components/Modal";
 import NotificationPanel from "../../components/NotificationPanel";
@@ -24,6 +25,7 @@ import { disconnectSocket, getSocket } from "../../lib/socket";
 
 export default function StaffDashboard() {
   const navigate = useNavigate();
+  const signedInUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [activeTab, setActiveTab] = useState("queue");
   const [departments, setDepartments] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -88,9 +90,10 @@ export default function StaffDashboard() {
     ["reports", "Reports"],
     ["doctors", "Doctors"],
     ["departments", "Departments"],
+    ...(signedInUser.role === "admin" ? [["accounts", "Accounts"]] : []),
   ];
 
-  const openDialog = ({
+  const openDialog = useCallback(({
     title,
     message,
     variant = "info",
@@ -107,53 +110,57 @@ export default function StaffDashboard() {
       cancelText,
       onConfirm,
     });
-  };
+  }, []);
+
+  const showAccountMessage = useCallback((title, message, variant = "info") => {
+    openDialog({ title, message, variant });
+  }, [openDialog]);
 
   const closeDialog = () => {
     setDialog((current) => ({ ...current, isOpen: false, onConfirm: null }));
   };
 
-  const fetchManagementData = async () => {
+  const fetchManagementData = useCallback(async () => {
     const [deptRes, docRes] = await Promise.all([
       api.get("/departments"),
       api.get("/doctors"),
     ]);
     setDepartments(deptRes.data);
     setDoctors(docRes.data);
-  };
+  }, []);
 
-  const fetchEligibleDoctorUsers = async () => {
+  const fetchEligibleDoctorUsers = useCallback(async () => {
     const res = await api.get("/doctors/eligible-users");
     setEligibleDoctorUsers(res.data.users || []);
-  };
+  }, []);
 
-  const fetchQueueBoard = async () => {
+  const fetchQueueBoard = useCallback(async () => {
     const res = await api.get("/queue/live");
     setQueues(res.data.queues);
     setAlerts(res.data.alerts);
     setDoctorGroups(res.data.doctorGroups || []);
-  };
+  }, []);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = useCallback(async () => {
     const res = await api.get("/appointments/staff");
     setAppointments(res.data.appointments || []);
-  };
+  }, []);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     const [reportsRes, auditRes] = await Promise.all([
       api.get("/reports"),
       api.get("/audit-logs"),
     ]);
     setReports(reportsRes.data);
     setAuditLogs(auditRes.data.logs || []);
-  };
+  }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     const res = await api.get("/notifications");
     setNotifications(res.data.notifications || []);
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       await Promise.all([
@@ -173,11 +180,18 @@ export default function StaffDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    fetchAppointments,
+    fetchManagementData,
+    fetchNotifications,
+    fetchQueueBoard,
+    fetchReports,
+    openDialog,
+  ]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -210,7 +224,7 @@ export default function StaffDashboard() {
       socket.off("staff:alert", handleAlert);
       socket.off("notification:new", handleNotification);
     };
-  }, []);
+  }, [fetchQueueBoard]);
 
   const openDeptModal = (dept = null) => {
     if (dept) {
@@ -925,6 +939,10 @@ export default function StaffDashboard() {
                   </table>
                 </div>
               </div>
+            )}
+
+            {activeTab === "accounts" && signedInUser.role === "admin" && (
+              <AdminAccountPanel onMessage={showAccountMessage} />
             )}
 
             {activeTab === "doctors" && (

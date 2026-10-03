@@ -1,0 +1,114 @@
+[
+    {
+        "Id":  "T01-backend-tests",
+        "Title":  "Backend unit and boundary tests",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T01-backend-tests.log"
+    },
+    {
+        "Id":  "T02-frontend-lint",
+        "Title":  "Frontend lint",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T02-frontend-lint.log"
+    },
+    {
+        "Id":  "T03-frontend-build",
+        "Title":  "Frontend production build",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T03-frontend-build.log"
+    },
+    {
+        "Id":  "T04-local-compose",
+        "Title":  "Clinic LAN Compose validation",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T04-local-compose.log"
+    },
+    {
+        "Id":  "T05-online-compose",
+        "Title":  "Ubuntu VPS Compose validation",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T05-online-compose.log"
+    },
+    {
+        "Id":  "T06-backend-audit",
+        "Title":  "Backend production dependency audit",
+        "Status":  "PASS",
+        "ExitCode":  1,
+        "Log":  "T06-backend-audit.log"
+    },
+    {
+        "Id":  "T07-frontend-audit",
+        "Title":  "Frontend production dependency audit",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T07-frontend-audit.log"
+    },
+    {
+        "Id":  "T08-diff-check",
+        "Title":  "Whitespace and patch integrity",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T08-diff-check.log"
+    },
+    {
+        "Id":  "T09-container-build",
+        "Title":  "Build clinic deployment",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T09-container-build.log"
+    },
+    {
+        "Id":  "T10-container-start",
+        "Title":  "Start clean clinic deployment",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T10-container-start.log"
+    },
+    {
+        "Id":  "T11-api-workflow",
+        "Title":  "Patient-to-consultation API workflow",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T11-api-workflow.log"
+    },
+    {
+        "Id":  "T12-performance",
+        "Title":  "25-user performance check",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T12-performance.log"
+    },
+    {
+        "Id":  "T13-browser",
+        "Title":  "Headless browser and responsive workflow",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T13-browser.log"
+    },
+    {
+        "Id":  "T14-realtime",
+        "Title":  "Authenticated Socket.IO delivery",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T14-realtime.log"
+    },
+    {
+        "Id":  "T15-recovery",
+        "Title":  "Restart, backup, and restore rehearsal",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T15-recovery.log"
+    },
+    {
+        "Id":  "T16-concurrency",
+        "Title":  "Concurrent daily queue allocation",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "Log":  "T16-concurrency.log"
+    }
+]

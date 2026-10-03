@@ -16,6 +16,7 @@ module.exports = (sequelize) => {
       queue_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
+        unique: true,
       },
       patient_id: {
         type: DataTypes.INTEGER,

@@ -71,22 +71,17 @@ const getMyDoctorProfile = async (req, res) => {
 
 const updateMyDoctorProfile = async (req, res) => {
   try {
-    const { full_name, phone, department_id, specialization } = req.body;
+    const { full_name, phone, specialization } = req.body;
     const doctor = await Doctor.findOne({ where: { user_id: req.user.id } });
 
     if (!doctor) {
       return res.status(404).json({ message: "Doctor profile not found" });
     }
 
-    if (!full_name?.trim() || !phone?.trim() || !specialization?.trim() || !department_id) {
+    if (!full_name?.trim() || !phone?.trim() || !specialization?.trim()) {
       return res.status(400).json({
-        message: "Full name, phone, department, and specialization are required",
+        message: "Full name, phone, and specialization are required",
       });
-    }
-
-    const department = await Department.findByPk(department_id);
-    if (!department) {
-      return res.status(404).json({ message: "Department not found" });
     }
 
     await Promise.all([
@@ -98,7 +93,6 @@ const updateMyDoctorProfile = async (req, res) => {
         { where: { id: req.user.id } },
       ),
       doctor.update({
-        department_id: Number(department_id),
         specialization: specialization.trim(),
       }),
     ]);
@@ -109,7 +103,7 @@ const updateMyDoctorProfile = async (req, res) => {
       targetType: "doctor",
       targetId: doctor.id,
       metadata: {
-        department_id: Number(department_id),
+        department_id: doctor.department_id,
       },
     });
 

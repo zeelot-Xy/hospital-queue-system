@@ -12,6 +12,7 @@ module.exports = (sequelize) => {
       appointment_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
+        unique: true,
       },
       patient_id: {
         type: DataTypes.INTEGER,
@@ -27,6 +28,10 @@ module.exports = (sequelize) => {
       },
       queue_number: {
         type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+      queue_date: {
+        type: DataTypes.DATEONLY,
         allowNull: false,
       },
       status: {
@@ -79,6 +84,13 @@ module.exports = (sequelize) => {
     {
       timestamps: true,
       tableName: "queues",
+      indexes: [
+        {
+          unique: true,
+          fields: ["doctor_id", "queue_date", "queue_number"],
+          name: "queues_doctor_date_number_unique",
+        },
+      ],
     },
   );
 

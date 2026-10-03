@@ -85,8 +85,8 @@ export default function Register() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               I am registering as
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {["patient", "doctor", "staff"].map((item) => (
+            <div className="grid grid-cols-2 gap-3">
+              {["patient", "doctor"].map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -168,6 +168,7 @@ export default function Register() {
             onChange={handleChange}
             placeholder="Create a strong password"
             required
+            minLength={8}
           />
 
           {formData.role === "doctor" && (

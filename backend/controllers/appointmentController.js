@@ -7,6 +7,7 @@ const {
   PatientProfile,
   Queue,
   User,
+  sequelize,
 } = require("../models/index");
 const { doctorInclude } = require("../utils/doctorUtils");
 const { getOpenSlotsForDoctor } = require("../utils/availabilityUtils");
@@ -94,30 +95,43 @@ const bookAppointment = async (req, res) => {
       });
     }
 
-    const appointment = await Appointment.create({
-      patient_id: req.user.id,
-      doctor_id,
-      department_id,
-      appointment_date,
-      appointment_time: `${requestedTime}:00`,
-      status: "booked",
-    });
+    const appointment = await sequelize.transaction(async (transaction) => {
+      const createdAppointment = await Appointment.create(
+        {
+          patient_id: req.user.id,
+          doctor_id,
+          department_id,
+          appointment_date,
+          appointment_time: `${requestedTime}:00`,
+          status: "booked",
+        },
+        { transaction },
+      );
 
-    await logAudit({
-      actorUserId: req.user.id,
-      actionType: "appointment.booked",
-      targetType: "appointment",
-      targetId: appointment.id,
-      metadata: {
-        doctor_id,
-        department_id,
-      },
+      await logAudit({
+        actorUserId: req.user.id,
+        actionType: "appointment.booked",
+        targetType: "appointment",
+        targetId: createdAppointment.id,
+        metadata: {
+          doctor_id,
+          department_id,
+        },
+        transaction,
+      });
+
+      return createdAppointment;
     });
 
     res
       .status(201)
       .json({ message: "Appointment booked successfully", appointment });
   } catch (error) {
+    if (error.name === "SequelizeUniqueConstraintError") {
+      return res.status(409).json({
+        message: "This appointment slot was just booked. Please choose another time.",
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -236,7 +250,10 @@ const createWalkIn = async (req, res) => {
     });
 
     const lastQueue = await Queue.findOne({
-      where: { doctor_id: Number(doctor_id) },
+      where: {
+        doctor_id: Number(doctor_id),
+        queue_date: appointmentDate,
+      },
       order: [["queue_number", "DESC"]],
     });
 
@@ -246,6 +263,7 @@ const createWalkIn = async (req, res) => {
       doctor_id: Number(doctor_id),
       department_id: Number(department_id),
       queue_number: lastQueue ? lastQueue.queue_number + 1 : 1,
+      queue_date: appointmentDate,
       status: "waiting",
       joined_at: now,
     });

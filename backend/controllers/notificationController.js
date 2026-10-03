@@ -3,32 +3,12 @@ const { Notification } = require("../models");
 const getMyNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({
-      where: {
-        ...(req.user.role
-          ? {
-              recipient_role: req.user.role,
-            }
-          : {}),
-      },
-      order: [["createdAt", "DESC"]],
-      limit: 20,
-    });
-
-    const userSpecific = await Notification.findAll({
       where: { recipient_user_id: req.user.id },
       order: [["createdAt", "DESC"]],
       limit: 20,
     });
 
-    const merged = [...userSpecific, ...notifications]
-      .filter(
-        (notification, index, array) =>
-          array.findIndex((item) => item.id === notification.id) === index,
-      )
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 20);
-
-    res.json({ notifications: merged });
+    res.json({ notifications });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -42,9 +22,7 @@ const markNotificationRead = async (req, res) => {
       return res.status(404).json({ message: "Notification not found" });
     }
 
-    const matchesUser =
-      notification.recipient_user_id === req.user.id ||
-      notification.recipient_role === req.user.role;
+    const matchesUser = notification.recipient_user_id === req.user.id;
 
     if (!matchesUser) {
       return res.status(403).json({ message: "Access denied" });

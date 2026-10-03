@@ -14,6 +14,7 @@ const {
 } = require("../models/index");
 const { logAudit } = require("../utils/auditLogger");
 const { emitQueueEvent } = require("../utils/socketEvents");
+const { validateRegistrationInput } = require("../utils/authPolicy");
 
 const register = async (req, res) => {
   try {
@@ -25,14 +26,23 @@ const register = async (req, res) => {
       role,
       specialization,
     } = req.body;
-    const normalizedEmail = email?.trim().toLowerCase();
+    const validation = validateRegistrationInput({
+      full_name,
+      email,
+      phone,
+      password,
+      role,
+      specialization,
+    });
 
-    if (!normalizedEmail) {
-      return res.status(400).json({ message: "Email is required" });
+    if (validation.error) {
+      return res.status(400).json({ message: validation.error });
     }
 
+    const registration = validation.value;
+
     const existingUser = await User.findOne({
-      where: { email: normalizedEmail },
+      where: { email: registration.email },
     });
     if (existingUser) {
       return res
@@ -41,38 +51,50 @@ const register = async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(registration.password, salt);
 
-    const user = await User.create({
-      full_name,
-      email: normalizedEmail,
-      phone,
-      password: hashedPassword,
-      role: role || "patient",
-    });
+    const user = await sequelize.transaction(async (transaction) => {
+      const createdUser = await User.create(
+        {
+          full_name: registration.full_name,
+          email: registration.email,
+          phone: registration.phone,
+          password: hashedPassword,
+          role: registration.role,
+        },
+        { transaction },
+      );
 
-    if (role === "doctor") {
-      await Doctor.create({
-        user_id: user.id,
-        department_id: null,
-        specialization: specialization || "General Medicine",
+      if (registration.role === "doctor") {
+        await Doctor.create(
+          {
+            user_id: createdUser.id,
+            department_id: null,
+            specialization: registration.specialization,
+          },
+          { transaction },
+        );
+      } else {
+        await PatientProfile.create(
+          {
+            user_id: createdUser.id,
+          },
+          { transaction },
+        );
+      }
+
+      await logAudit({
+        actorUserId: createdUser.id,
+        actionType: "auth.register",
+        targetType: "user",
+        targetId: createdUser.id,
+        metadata: {
+          role: createdUser.role,
+        },
+        transaction,
       });
-    }
 
-    if ((role || "patient") === "patient") {
-      await PatientProfile.create({
-        user_id: user.id,
-      });
-    }
-
-    await logAudit({
-      actorUserId: user.id,
-      actionType: "auth.register",
-      targetType: "user",
-      targetId: user.id,
-      metadata: {
-        role: user.role,
-      },
+      return createdUser;
     });
 
     const token = jwt.sign(
@@ -93,10 +115,7 @@ const register = async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({
-      message: "Server error during registration",
-      error: error.message,
-    });
+    res.status(500).json({ message: "Server error during registration" });
   }
 };
 
@@ -114,6 +133,12 @@ const login = async (req, res) => {
     const user = await User.findOne({ where: { email: normalizedEmail } });
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    if (user.status !== "active") {
+      return res.status(403).json({
+        message: "This account is inactive. Contact clinic administration.",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -282,9 +307,7 @@ const deleteMyAccount = async (req, res) => {
       }
 
       await Notification.destroy({
-        where: {
-          [Op.or]: [{ recipient_user_id: user.id }, { recipient_role: user.role }],
-        },
+        where: { recipient_user_id: user.id },
         transaction,
       });
 
@@ -292,7 +315,7 @@ const deleteMyAccount = async (req, res) => {
     });
 
     await logAudit({
-      actorUserId: req.user.id,
+      actorUserId: null,
       actionType: "account.deleted",
       targetType: "user",
       targetId: user.id,

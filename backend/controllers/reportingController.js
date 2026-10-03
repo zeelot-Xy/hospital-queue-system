@@ -12,6 +12,7 @@ const getReports = async (req, res) => {
       missedCount,
       rescheduledCount,
       walkInCount,
+      bookedCount,
       busiestDoctors,
       busiestDepartments,
       queueTimingRows,
@@ -38,6 +39,12 @@ const getReports = async (req, res) => {
       Appointment.count({
         where: {
           walk_in: true,
+          createdAt: { [Op.gte]: since },
+        },
+      }),
+      Appointment.count({
+        where: {
+          walk_in: false,
           createdAt: { [Op.gte]: since },
         },
       }),
@@ -104,7 +111,7 @@ const getReports = async (req, res) => {
         missed_appointments: missedCount,
         rescheduled_appointments: rescheduledCount,
         walk_in_volume: walkInCount,
-        booked_volume: Math.max(0, seenCount - walkInCount),
+        booked_volume: bookedCount,
         average_wait_minutes: Number(queueTimingRows?.[0]?.avg_wait_minutes || 0).toFixed(1),
         average_consultation_minutes: Number(
           queueTimingRows?.[0]?.avg_consultation_minutes || 0,

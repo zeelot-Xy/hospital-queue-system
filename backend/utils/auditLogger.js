@@ -6,18 +6,22 @@ const logAudit = async ({
   targetType,
   targetId = null,
   metadata = null,
+  transaction = null,
 }) => {
   if (!actionType || !targetType) {
     return null;
   }
 
-  return AuditLog.create({
-    actor_user_id: actorUserId,
-    action_type: actionType,
-    target_type: targetType,
-    target_id: targetId,
-    metadata,
-  });
+  return AuditLog.create(
+    {
+      actor_user_id: actorUserId,
+      action_type: actionType,
+      target_type: targetType,
+      target_id: targetId,
+      metadata,
+    },
+    transaction ? { transaction } : undefined,
+  );
 };
 
 module.exports = {

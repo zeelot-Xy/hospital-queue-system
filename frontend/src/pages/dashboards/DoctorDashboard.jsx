@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -85,7 +85,7 @@ export default function DoctorDashboard() {
     onConfirm: null,
   });
 
-  const showDialog = (
+  const showDialog = useCallback((
     title,
     message,
     variant = "info",
@@ -100,9 +100,9 @@ export default function DoctorDashboard() {
       cancelText: options.cancelText,
       onConfirm: options.onConfirm || null,
     });
-  };
+  }, []);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       const [
         doctorRes,
@@ -136,7 +136,7 @@ export default function DoctorDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showDialog]);
 
   const openProfileModal = () => {
     if (!doctorProfile) {
@@ -157,7 +157,7 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [fetchDashboard]);
 
   useEffect(() => {
     if (hasInitializedMobileSection) {
@@ -208,7 +208,7 @@ export default function DoctorDashboard() {
       socket.off("queue:refresh", refresh);
       socket.off("notification:new", onNotification);
     };
-  }, []);
+  }, [fetchDashboard]);
 
   const runQueueAction = async (path, body, successMessage) => {
     setWorkingAction(path);
@@ -241,7 +241,6 @@ export default function DoctorDashboard() {
         full_name: profileForm.full_name,
         phone: profileForm.phone,
         specialization: profileForm.specialization,
-        department_id: Number(profileForm.department_id),
       });
 
       setDoctorProfile(res.data);
@@ -1028,21 +1027,19 @@ export default function DoctorDashboard() {
             </label>
             <select
               value={profileForm.department_id}
-              onChange={(e) =>
-                setProfileForm((current) => ({
-                  ...current,
-                  department_id: e.target.value,
-                }))
-              }
+              disabled
               className="w-full px-4 py-3.5 border border-gray-300 rounded-2xl focus:outline-none focus:border-teal-600"
-              required>
-              <option value="">Select Department</option>
+              aria-describedby="department-help">
+              <option value="">Awaiting staff assignment</option>
               {departments.map((department) => (
                 <option key={department.id} value={department.id}>
                   {department.name}
                 </option>
               ))}
             </select>
+            <p id="department-help" className="mt-2 text-sm text-gray-500">
+              Clinic staff control department assignments.
+            </p>
           </div>
 
           {profileError && (

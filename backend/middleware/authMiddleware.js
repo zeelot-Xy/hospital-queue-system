@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const { User } = require("../models");
 
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
@@ -8,13 +9,21 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: "Access token required" });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: "Invalid or expired token" });
+  try {
+    const tokenUser = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(tokenUser.id, {
+      attributes: ["id", "role", "status"],
+    });
+
+    if (!user || user.status !== "active" || user.role !== tokenUser.role) {
+      return res.status(403).json({ message: "Invalid or inactive account" });
     }
-    req.user = user; // { id, role }
+
+    req.user = { id: user.id, role: user.role };
     next();
-  });
+  } catch (_error) {
+    return res.status(403).json({ message: "Invalid or expired token" });
+  }
 };
 
 const authorizeRole = (...allowedRoles) => {

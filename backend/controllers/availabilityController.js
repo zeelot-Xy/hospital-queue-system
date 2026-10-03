@@ -1,4 +1,4 @@
-const { DoctorAvailability } = require("../models");
+const { DoctorAvailability, sequelize } = require("../models");
 const { getDoctorByUserId } = require("../utils/doctorUtils");
 const { validateAvailabilityRows } = require("../utils/availabilityUtils");
 const { logAudit } = require("../utils/auditLogger");
@@ -36,20 +36,26 @@ const replaceMyAvailability = async (req, res) => {
     const rows = Array.isArray(req.body?.rows) ? req.body.rows : [];
     validateAvailabilityRows(rows);
 
-    await DoctorAvailability.destroy({ where: { doctor_id: doctor.id } });
+    await sequelize.transaction(async (transaction) => {
+      await DoctorAvailability.destroy({
+        where: { doctor_id: doctor.id },
+        transaction,
+      });
 
-    if (rows.length > 0) {
-      await DoctorAvailability.bulkCreate(
-        rows.map((row) => ({
-          doctor_id: doctor.id,
-          day_of_week: Number(row.day_of_week),
-          start_time: row.start_time,
-          end_time: row.end_time,
-          slot_minutes: Number(row.slot_minutes) || 30,
-          is_active: row.is_active !== false,
-        })),
-      );
-    }
+      if (rows.length > 0) {
+        await DoctorAvailability.bulkCreate(
+          rows.map((row) => ({
+            doctor_id: doctor.id,
+            day_of_week: Number(row.day_of_week),
+            start_time: row.start_time,
+            end_time: row.end_time,
+            slot_minutes: Number(row.slot_minutes) || 30,
+            is_active: row.is_active !== false,
+          })),
+          { transaction },
+        );
+      }
+    });
 
     const savedRows = await DoctorAvailability.findAll({
       where: { doctor_id: doctor.id },

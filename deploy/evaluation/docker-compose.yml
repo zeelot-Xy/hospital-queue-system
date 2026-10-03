@@ -1,0 +1,74 @@
+name: hospital-queue-evaluation
+
+x-backend-environment: &backend-environment
+  NODE_ENV: production
+  DEMO_MODE: "true"
+  TZ: ${CLINIC_TIMEZONE:-Africa/Lagos}
+  PORT: 5000
+  DB_HOST: database
+  DB_PORT: 5432
+  DB_NAME: ${DB_NAME}
+  DB_USER: ${DB_USER}
+  DB_PASSWORD: ${DB_PASSWORD}
+  JWT_SECRET: ${JWT_SECRET}
+  ADMIN_NAME: ${ADMIN_NAME}
+  ADMIN_EMAIL: ${ADMIN_EMAIL}
+  ADMIN_PHONE: ${ADMIN_PHONE}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+  DEMO_ACCOUNT_PASSWORD: ${DEMO_ACCOUNT_PASSWORD}
+  ALLOWED_ORIGINS: ${CLINIC_ORIGINS}
+
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - evaluation_database:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build:
+      context: ../../backend
+    restart: "no"
+    environment: *backend-environment
+    command: ["sh", "-c", "npm run db:migrate && npm run db:seed"]
+    depends_on:
+      database:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    environment: *backend-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  web:
+    build:
+      context: ../../frontend
+      args:
+        VITE_DEMO_MODE: "true"
+    restart: unless-stopped
+    ports:
+      - "${CLINIC_PORT:-8081}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  evaluation_database:

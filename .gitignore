@@ -3,6 +3,7 @@ node_modules/
 */node_modules/
 
 # Environment variables
+.env
 backend/.env
 frontend/.env
 
@@ -19,6 +20,8 @@ pids
 # Docker
 .docker
 postgres_data/
+deploy/*/backups/
+deploy/DEMO-CREDENTIALS.txt
 
 # OS
 .DS_Store
@@ -31,3 +34,10 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+release/stage/
+client-manuals/qa/
+
+# Local document QA and scratch artifacts
+.tmp*/
+.tmp*.json
+tmp/
